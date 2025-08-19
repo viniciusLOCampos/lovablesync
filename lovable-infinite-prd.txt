@@ -1,0 +1,460 @@
+# PRD - GitHub Repository Sync Tool (One-Click Solution)
+
+## 1. Visão Geral do Produto
+
+### Objetivo Principal
+Criar uma aplicação desktop que **replique EXATAMENTE** a funcionalidade dos workflows n8n apresentados, permitindo sincronização completa de múltiplos repositórios GitHub com **UM ÚNICO CLIQUE**.
+
+### Problema Específico
+- Os workflows n8n fazem: **DELETE COMPLETO** → **COPY COMPLETO** entre repositórios
+- Necessidade de executar essa operação em **múltiplos pares de repositórios simultaneamente**
+- Interface visual para gerenciar e executar todas as sincronizações de uma vez
+
+### Resultado Esperado
+**UM CLIQUE = SINCRONIZAÇÃO TOTAL** de todos os repositórios configurados
+
+## 2. Funcionalidades Core (Essenciais)
+
+### 2.1 Funcionalidade Principal: "SYNC ALL" 
+```
+[🚀 SINCRONIZAR TODOS]
+↓
+Para cada repositório configurado:
+1. DELETE: Apagar TUDO do repositório destino
+2. COPY: Copiar TUDO do repositório origem
+3. LOG: Registrar resultado
+```
+
+### 2.2 Gestão de Configurações
+- **Adicionar** pares origem → destino
+- **Listar** todas as configurações
+- **Habilitar/Desabilitar** configurações específicas
+- **Validar** repositórios (existência e permissões)
+
+### 2.3 Monitoramento em Tempo Real
+- **Progress bar** global e por repositório
+- **Status** de cada operação em andamento
+- **Logs** detalhados de cada ação
+
+## 3. Replicação Exata do Comportamento n8n
+
+### 3.1 Algoritmo Principal (Baseado no workflow)
+```python
+async def sync_all_repositories():
+    """Replica EXATAMENTE o comportamento do n8n"""
+    
+    for config in enabled_configurations:
+        # FASE 1: CLEANUP (igual ao workflow delete)
+        target_files = github.list_all_files(config.target_repo)
+        
+        for file_item in target_files:
+            if file_item.type == "file":
+                github.delete_file(config.target_repo, file_item.path)
+            elif file_item.type == "directory":
+                await delete_directory_recursive(config.target_repo, file_item.path)
+        
+        # FASE 2: COPY (igual ao workflow create)  
+        source_files = github.list_all_files(config.source_repo)
+        
+        for file_item in source_files:
+            if file_item.type == "file":
+                content = github.get_file(config.source_repo, file_item.path)
+                github.create_file(config.target_repo, file_item.path, content)
+            elif file_item.type == "directory":
+                await copy_directory_recursive(config.source_repo, config.target_repo, file_item.path)
+```
+
+### 3.2 Operações Recursivas (Igual aos sub-workflows)
+
+#### Delete Recursivo
+```python
+async def delete_directory_recursive(repo, path):
+    """Replica o sub-workflow 'sub-pastas_github(delete)'"""
+    
+    directory_contents = github.list_files(repo, path)
+    
+    for item in directory_contents:
+        if item.type == "file":
+            github.delete_file(repo, item.path)
+        elif item.type == "directory":
+            # Chamada recursiva (igual ao Execute Workflow no n8n)
+            await delete_directory_recursive(repo, item.path)
+```
+
+#### Copy Recursivo
+```python
+async def copy_directory_recursive(source_repo, target_repo, path):
+    """Replica o sub-workflow 'sub-pastas_github(create)'"""
+    
+    directory_contents = github.list_files(source_repo, path)
+    
+    for item in directory_contents:
+        if item.type == "file":
+            content = github.get_file(source_repo, item.path)
+            github.create_file(target_repo, item.path, content)
+        elif item.type == "directory":
+            # Chamada recursiva (igual ao Execute Workflow no n8n)
+            await copy_directory_recursive(source_repo, target_repo, item.path)
+```
+
+## 4. Interface do Usuário (Minimalista)
+
+### 4.1 Tela Principal - Foco Total no One-Click
+```
+┌─────────────────────────────────────────────────────────────┐
+│ GitHub Repository Sync Tool                                 │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ ☑ Projeto A: user/repo-v1 → user/repo-v2               │ │
+│ │ ☑ Projeto B: user/old-api → user/new-api               │ │  
+│ │ ☐ Projeto C: user/legacy → user/modern   [Desabilitado]│ │
+│ │ ☑ Projeto D: user/backup → user/main                   │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ [+ Adicionar]  [✏️ Editar]  [🗑️ Remover]  [⚙️ Config]        │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │            🚀 SINCRONIZAR TODOS                         │ │
+│ │          [Executar Sync Completo]                       │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ Status: Pronto • 3 repositórios ativos                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 4.2 Tela de Progresso (Durante Execução - Organizada por Projeto)
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Sincronização em Andamento...                              │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ Progresso Geral: ████████░░ 75% (3/4 projetos)            │
+│                                                             │
+│ 📁 PROJETO: Website Redesign                               │
+│ ✅ 1/3: user/site-v1 → user/site-v2 (2.3s) 45→48 arqs    │
+│ ✅ 2/3: user/site-v2 → user/site-v3 (1.8s) 23→25 arqs    │
+│ 🔄 3/3: user/site-v3 → user/prod (34/67 arquivos...)      │
+│                                                             │
+│ 📁 PROJETO: API Migration                                  │
+│ ✅ 1/2: company/old-api → company/new-api (3.1s)          │
+│ ⏳ 2/2: company/api-docs → company/new-docs (na fila...)  │
+│                                                             │
+│ Operação Atual: [Website Redesign] Copiando /src/components/Header.jsx │
+│                                                             │
+│ [❌ Cancelar] [📄 Ver Logs Detalhados] [⏸️ Pausar Projeto] │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 5. Arquitetura Técnica Focada na Funcionalidade
+
+### 5.1 Stack Tecnológico
+- **Python 3.9+** (linguagem principal)
+- **PyGithub** (API GitHub oficial)
+- **Tkinter** (interface gráfica nativa)
+- **asyncio** (operações assíncronas)
+- **threading** (UI responsiva)
+
+### 5.2 Estrutura de Código Simplificada
+```
+github_sync_tool/
+├── main.py                 # Entry point + GUI hierárquica
+├── github_syncer.py        # Lógica de sincronização (core)
+├── config_manager.py       # Gerenciar contas/projetos/repos
+├── models.py               # GitHubAccount, Project, SyncConfig
+├── requirements.txt        # Dependências
+├── accounts.json          # Configuração da conta GitHub
+├── projects.json          # Configuração de projetos e repositórios
+└── logs/                  # Logs organizados por execução
+```
+
+### 5.3 Classes Principais
+```python
+# Classe CORE - Replica o comportamento n8n
+class GitHubSyncer:
+    async def sync_all_repositories(configs: List[SyncConfig]) -> List[SyncResult]
+    async def sync_single_repository(source: str, target: str) -> SyncResult
+    async def delete_all_files(repo: str) -> int
+    async def copy_all_files(source: str, target: str) -> int
+    async def delete_directory_recursive(repo: str, path: str)
+    async def copy_directory_recursive(source: str, target: str, path: str)
+
+# Interface gráfica minimalista
+class MainWindow:
+    def setup_ui()                      # Interface principal
+    def on_sync_all_clicked()          # Handler do botão principal
+    def show_progress_window()         # Janela de progresso
+    def add_sync_configuration()       # Adicionar novo par origem→destino
+```
+
+## 6. Comportamento Detalhado do "One-Click"
+
+### 6.1 Quando Usuário Clica "SINCRONIZAR TODOS"
+```python
+def on_sync_all_clicked(self):
+    # 1. CONFIRMAÇÃO DETALHADA
+    active_projects = [p for p in self.projects if p.enabled]
+    total_repos = sum(len([r for r in p.repositories if r.enabled]) for p in active_projects)
+    
+    message = f"""
+    Isso irá executar:
+    • {len(active_projects)} projetos ativos
+    • {total_repos} sincronizações de repositórios
+    • DELETAR TUDO dos repositórios destino
+    • COPIAR TUDO dos repositórios origem
+    
+    Continuar?"""
+    
+    if not messagebox.askyesno("Confirmar Sincronização Completa", message):
+        return
+    
+    # 2. VALIDAÇÕES PRÉVIAS
+    if not self.github_account.validated:
+        messagebox.showerror("Token inválido")
+        return
+    
+    # 3. EXECUTAR POR PROJETO (mantendo ordem)
+    self.show_progress_window()
+    threading.Thread(target=self.run_sync_all_projects).start()
+
+async def run_sync_all_projects(self):
+    """Executa sincronização de todos os projetos"""
+    syncer = GitHubSyncer(self.github_account.token)
+    
+    for project in self.projects:
+        if project.enabled:
+            # Executar repositórios NA ORDEM configurada
+            ordered_repos = sorted(project.repositories, key=lambda r: r.order)
+            enabled_repos = [r for r in ordered_repos if r.enabled]
+            
+            for repo_config in enabled_repos:
+                result = await syncer.sync_single_repository(
+                    repo_config.source_repo, 
+                    repo_config.target_repo
+                )
+                self.update_progress(project.name, repo_config, result)
+```
+
+### 6.2 Execução Paralela/Sequencial
+```python
+# OPÇÃO 1: Sequencial (mais seguro para rate limits)
+for config in configs:
+    result = await self.sync_single_repository(config)
+    results.append(result)
+    self.update_progress(config.name, result)
+
+# OPÇÃO 2: Paralela (mais rápida, mas cuidado com rate limits)
+tasks = [self.sync_single_repository(config) for config in configs]
+results = await asyncio.gather(*tasks, return_exceptions=True)
+```
+
+## 7. Configuração e Setup (Estrutura Hierárquica)
+
+### 7.1 Modelo de Organização
+```
+CONTA GITHUB
+├── TOKEN (configuração única)
+├── PROJETO A
+│   ├── repositório-1 → repositório-2
+│   ├── repositório-2 → repositório-3  
+│   └── repositório-3 → repositório-4
+├── PROJETO B
+│   ├── old-api → new-api
+│   └── backup → production
+└── PROJETO C
+    ├── legacy → modern
+    ├── dev → staging
+    └── staging → production
+```
+
+### 7.2 Configuração Inicial (Primeira Execução)
+1. **GitHub Token**: Usuário configura token único (com permissões repo)
+2. **Validação**: Token é testado contra API GitHub
+3. **Interface**: Tela principal é exibida para gestão de projetos
+
+### 7.3 Gestão de Projetos e Repositórios
+
+#### 7.3.1 Interface Hierárquica
+```
+┌─────────────────────────────────────────────────────────────┐
+│ GitHub Repository Sync Tool                                 │
+├─────────────────────────────────────────────────────────────┤
+│ Token: github_pat_11A... [✏️ Alterar]                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ 📁 PROJETO: Website Redesign                               │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 1. ☑ user/website-v1 → user/website-v2                 │ │
+│ │ 2. ☑ user/website-v2 → user/website-v3                 │ │  
+│ │ 3. ☐ user/website-v3 → user/website-prod [Desabilitado]│ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ 📁 PROJETO: API Migration                                  │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │ 1. ☑ company/old-api → company/new-api                 │ │
+│ │ 2. ☑ company/api-docs → company/new-docs               │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ [+ Novo Projeto] [✏️ Editar Projeto] [🗑️ Remover Projeto]   │
+│                                                             │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │            🚀 SINCRONIZAR TODOS                         │ │
+│ │       [Executar Todos os Projetos Ativos]              │ │
+│ └─────────────────────────────────────────────────────────┘ │
+│                                                             │
+│ Status: 2 projetos • 5 repositórios ativos                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 7.3.2 Dialog: Criar/Editar Projeto
+```
+┌─────────────────────────────────────────────┐
+│ Configurar Projeto                          │
+├─────────────────────────────────────────────┤
+│ Nome do Projeto: [Website Redesign____]     │
+│                                             │
+│ Repositórios (Ordem de Execução):          │
+│ ┌─────────────────────────────────────────┐ │
+│ │ 1. [user/site-v1___] → [user/site-v2_] │ │
+│ │ 2. [user/site-v2___] → [user/site-v3_] │ │
+│ │ 3. [user/site-v3___] → [user/prod___] │ │
+│ └─────────────────────────────────────────┘ │
+│                                             │
+│ [+ Adicionar Repo] [↑↓ Reordenar] [🗑️ Remover] │
+│                                             │
+│ [Testar Todos] [Cancelar] [Salvar]         │
+└─────────────────────────────────────────────┘
+```
+
+#### 7.3.3 Dialog: Adicionar Repositório
+```
+┌─────────────────────────────────┐
+│ Adicionar Repositório ao Projeto│
+├─────────────────────────────────┤
+│ Origem:  [user/repo-source___]  │
+│ Destino: [user/repo-target___]  │
+│                                 │
+│ ☑ Ativo                         │
+│                                 │
+│ Posição na ordem:               │
+│ ○ No final                      │
+│ ○ Posição específica: [3_]      │
+│                                 │
+│ [Testar Acesso] [Cancelar] [OK] │
+└─────────────────────────────────┘
+```
+
+### 7.4 Configurações Manuais Obrigatórias
+
+#### 7.4.1 GitHub Token (Nível Conta)
+- **Configuração única** por conta GitHub
+- **Permissões necessárias**: repo (full control)
+- **Validação**: Testar acesso antes de salvar
+- **Alteração**: Possível a qualquer momento
+
+#### 7.4.2 Nome do Projeto (Nível Projeto)
+- **Definição manual**: Usuário nomeia cada projeto
+- **Exemplos**: "Website Redesign", "API Migration", "Database Update"
+- **Função**: Organizar e agrupar sincronizações relacionadas
+
+#### 7.4.3 Repositórios (Nível Sincronização)
+- **Origem/Destino**: Usuário digita manualmente (formato: user/repo)
+- **Validação**: Verificar existência e permissões
+- **Formato obrigatório**: "username/repository-name"
+
+#### 7.4.4 Ordem de Execução (Nível Projeto)
+- **Controle manual**: Usuário define sequência exata
+- **Importância crítica**: Ordem pode afetar dependências
+- **Interface**: Drag-and-drop ou botões ↑↓
+- **Execução**: Sempre sequencial dentro do projeto
+
+### 7.3 Validação de Repositórios
+- Verificar se repositórios existem
+- Verificar permissões de leitura (origem)  
+- Verificar permissões de escrita (destino)
+- Alertar sobre repositórios grandes (>1000 arquivos)
+
+## 8. Tratamento de Erros e Edge Cases
+
+### 8.1 Cenários de Erro
+- **Rate Limiting**: Implementar delays automáticos
+- **Repositório não encontrado**: Pular e continuar
+- **Sem permissão**: Pular e continuar  
+- **Falha de rede**: Retry automático (3x)
+- **Repositório muito grande**: Aviso antes de executar
+
+### 8.2 Recovery e Rollback
+- **Log completo** de todas as operações
+- **Não há rollback** (operação destrutiva por design)
+- **Confirmação clara** antes da execução
+
+## 9. Critérios de Aceitação (One-Click Focus)
+
+### ✅ Funcionalidades Obrigatórias (Atualizado para Estrutura Hierárquica)
+- [ ] **Configuração Manual Obrigatória**:
+  - [ ] GitHub Token (única por conta)
+  - [ ] Nome dos Projetos (manual)
+  - [ ] Nome dos Repositórios (formato user/repo manual)
+  - [ ] Ordem de execução dos repositórios (manual)
+- [ ] **One-Click Sync**: Um botão executa todos os projetos
+- [ ] **Replica n8n 100%**: DELETE total + COPY total
+- [ ] **Múltiplos projetos**: Processa hierarquia completa
+- [ ] **Ordem respeitada**: Executa repositórios na sequência configurada
+- [ ] **Progress hierárquico**: Mostra progresso por projeto e repo
+- [ ] **Tratamento de pastas**: Recursão igual aos sub-workflows
+- [ ] **Rate limiting**: Não quebra limites da API GitHub
+
+### ⚠️ Comportamentos Críticos (Atualizados)
+- **SEMPRE confirmar** mostrando quantos projetos/repos serão processados
+- **SEMPRE respeitar** a ordem configurada manualmente
+- **SEMPRE executar** sequencialmente dentro de cada projeto
+- **SEMPRE validar** token e repositórios antes da execução
+- **NUNCA alterar ordem** automaticamente - apenas manual
+
+### 📊 Métricas de Performance
+- **Tempo médio**: < 2min para repositórios pequenos (<100 arquivos)
+- **Taxa de sucesso**: > 95% em condições normais
+- **UI responsiva**: Nunca travar durante execução
+- **Memory usage**: < 500MB mesmo com repositórios grandes
+
+## 10. Fluxo de Desenvolvimento
+
+### Sprint 1: Core Engine
+- [ ] Implementar `GitHubSyncer` class
+- [ ] Algoritmo de DELETE recursivo
+- [ ] Algoritmo de COPY recursivo  
+- [ ] Testes com repositórios pequenos
+
+### Sprint 2: Interface One-Click
+- [ ] Interface principal
+- [ ] Botão "SINCRONIZAR TODOS"
+- [ ] Progress window
+- [ ] Configuração de repositórios
+
+### Sprint 3: Produção
+- [ ] Tratamento de erros
+- [ ] Rate limiting
+- [ ] Validações
+- [ ] Testes finais
+
+## 11. Dependências Mínimas
+
+```txt
+PyGithub>=1.59.0    # API GitHub oficial
+asyncio             # Operações assíncronas (built-in)
+tkinter             # Interface gráfica (built-in)
+threading           # UI responsiva (built-in)
+json                # Configurações (built-in)
+```
+
+## 12. Definição de "Pronto"
+
+### ✅ O produto está pronto quando:
+1. **Um clique** executa sincronização de todos os repositórios configurados
+2. **Comportamento idêntico** aos workflows n8n apresentados
+3. **Interface visual** mostra progresso em tempo real
+4. **Zero perda de dados** (confirmações e logs)
+5. **Funciona offline** após configuração inicial
+
+### 🎯 Sucesso = Usuário diz:
+*"Cliquei uma vez e todos os meus 10 repositórios foram sincronizados perfeitamente, igual ao n8n, mas muito mais fácil!"*
