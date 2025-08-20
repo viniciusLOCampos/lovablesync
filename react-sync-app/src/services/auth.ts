@@ -4,16 +4,63 @@ import type { GitHubRepo } from '../types'
 class GitHubAuthService {
   private octokit: Octokit | null = null
   private token: string | null = null
+  private readonly STORAGE_KEY = 'github_token'
+
+  constructor() {
+    // Carrega o token do localStorage na inicialização
+    this.loadTokenFromStorage()
+  }
 
   /**
    * Configura o token do GitHub e inicializa o cliente Octokit
    */
-  setToken(token: string): void {
+  setToken(token: string, persist: boolean = true): void {
     this.token = token
     this.octokit = new Octokit({
       auth: token,
       baseUrl: 'https://api.github.com'
     })
+    
+    // Salva o token no localStorage se solicitado
+    if (persist) {
+      this.saveTokenToStorage(token)
+    }
+  }
+
+  /**
+   * Salva o token no localStorage
+   */
+  private saveTokenToStorage(token: string): void {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, token)
+    } catch (error) {
+      console.warn('Erro ao salvar token no localStorage:', error)
+    }
+  }
+
+  /**
+   * Carrega o token do localStorage
+   */
+  private loadTokenFromStorage(): void {
+    try {
+      const savedToken = localStorage.getItem(this.STORAGE_KEY)
+      if (savedToken) {
+        this.setToken(savedToken, false) // Não persiste novamente
+      }
+    } catch (error) {
+      console.warn('Erro ao carregar token do localStorage:', error)
+    }
+  }
+
+  /**
+   * Remove o token do localStorage
+   */
+  private removeTokenFromStorage(): void {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY)
+    } catch (error) {
+      console.warn('Erro ao remover token do localStorage:', error)
+    }
   }
 
   /**
@@ -86,6 +133,7 @@ class GitHubAuthService {
       })
 
       return repos.map(repo => ({
+        id: repo.id,
         owner: repo.owner.login,
         name: repo.name,
         full_name: repo.full_name,
@@ -93,6 +141,34 @@ class GitHubAuthService {
       }))
     } catch (error: unknown) {
     console.error('Erro ao listar repositórios:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+    throw new Error(`Erro ao listar repositórios: ${errorMessage}`)
+    }
+  }
+
+  /**
+   * Lista todos os repositórios do usuário (públicos e privados)
+   */
+  async getUserRepositories(): Promise<GitHubRepo[]> {
+    if (!this.octokit) {
+      throw new Error('Token do GitHub não configurado')
+    }
+
+    try {
+      const { data: repos } = await this.octokit.rest.repos.listForAuthenticatedUser({
+        sort: 'updated',
+        per_page: 100
+      })
+
+      return repos.map(repo => ({
+        id: repo.id,
+        owner: repo.owner.login,
+        name: repo.name,
+        full_name: repo.full_name,
+        private: repo.private
+      }))
+    } catch (error: unknown) {
+    console.error('Erro ao listar repositórios do usuário:', error)
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
     throw new Error(`Erro ao listar repositórios: ${errorMessage}`)
     }
@@ -142,6 +218,7 @@ class GitHubAuthService {
   logout(): void {
     this.token = null
     this.octokit = null
+    this.removeTokenFromStorage()
   }
 }
 

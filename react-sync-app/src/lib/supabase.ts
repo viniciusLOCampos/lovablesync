@@ -1,9 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = 'https://punhxbvwjvfrhceainka.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1bmh4YnZ3anZmcmhjZWFpbmthIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ0NTAyMDcsImV4cCI6MjA3MDAyNjIwN30.UtEAXTfBmTg1GcmalxjxgTTXYWIhr4qAZ3bsWqmtDiI'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
+}
+
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 export type Database = {
   public: {
@@ -12,27 +16,42 @@ export type Database = {
         Row: {
           id: string
           name: string
-          source_repo: string
+          source_path: string
           target_repo: string
-          enabled: boolean
+          target_branch: string
+          github_token: string | null
+          auto_sync: boolean
+          sync_interval: number
+          last_sync: string | null
+          status: string
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           name: string
-          source_repo: string
+          source_path: string
           target_repo: string
-          enabled?: boolean
+          target_branch?: string
+          github_token?: string | null
+          auto_sync?: boolean
+          sync_interval?: number
+          last_sync?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           name?: string
-          source_repo?: string
+          source_path?: string
           target_repo?: string
-          enabled?: boolean
+          target_branch?: string
+          github_token?: string | null
+          auto_sync?: boolean
+          sync_interval?: number
+          last_sync?: string | null
+          status?: string
           updated_at?: string
         }
       }
@@ -42,7 +61,8 @@ export type Database = {
           config_id: string
           status: 'success' | 'error' | 'in_progress'
           message: string
-          files_processed: number
+          details: string | null
+          files_changed: number
           created_at: string
         }
         Insert: {
@@ -50,7 +70,8 @@ export type Database = {
           config_id: string
           status: 'success' | 'error' | 'in_progress'
           message: string
-          files_processed?: number
+          details?: string | null
+          files_changed?: number
           created_at?: string
         }
         Update: {
@@ -58,7 +79,8 @@ export type Database = {
           config_id?: string
           status?: 'success' | 'error' | 'in_progress'
           message?: string
-          files_processed?: number
+          details?: string | null
+          files_changed?: number
         }
       }
     }

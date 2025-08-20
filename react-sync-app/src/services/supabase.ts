@@ -2,6 +2,32 @@ import { supabase } from '../lib/supabase'
 import type { SyncConfig, CreateSyncConfig, UpdateSyncConfig, SyncLog, CreateSyncLog } from '../types'
 
 class SupabaseService {
+  // Função helper para retry de operações
+  private async retryOperation<T>(
+    operation: () => Promise<T>,
+    maxRetries: number = 3,
+    delay: number = 1000
+  ): Promise<T> {
+    let lastError: Error
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation()
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error('Erro desconhecido')
+        
+        if (attempt === maxRetries) {
+          throw lastError
+        }
+        
+        console.warn(`Tentativa ${attempt} falhou, tentando novamente em ${delay}ms:`, lastError.message)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        delay *= 2 // Backoff exponencial
+      }
+    }
+    
+    throw lastError!
+  }
   /**
    * Obtém todas as configurações de sincronização
    */
@@ -33,16 +59,20 @@ class SupabaseService {
         .from('sync_configs')
         .insert({
           name: config.name,
-          source_repo: config.source_repo,
+          source_path: config.source_path,
           target_repo: config.target_repo,
-          enabled: config.enabled ?? true
+          target_branch: config.target_branch ?? 'main',
+          github_token: config.github_token ?? null,
+          auto_sync: config.auto_sync ?? true,
+          sync_interval: config.sync_interval ?? 300,
+          status: 'active'
         })
         .select()
         .single()
       
       if (error) {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(`Erro ao criar configuração: ${errorMessage}`)
+        throw new Error(`Erro ao criar configuração: ${errorMessage}`)
       }
       
       return data
@@ -56,15 +86,51 @@ class SupabaseService {
    * Atualiza uma configuração existente
    */
   async updateConfig(id: string, config: UpdateSyncConfig): Promise<SyncConfig> {
-    try {
+    // Validar entrada
+    if (!id || typeof id !== 'string') {
+      throw new Error('ID da configuração é obrigatório')
+    }
+    
+    if (!config || Object.keys(config).length === 0) {
+      throw new Error('Dados de configuração são obrigatórios')
+    }
+    
+    return this.retryOperation(async () => {
+      // Verificar colunas disponíveis dinamicamente
+      const availableColumns = await this.getTableColumns('sync_configs')
+      console.log('Colunas disponíveis na tabela sync_configs:', availableColumns)
+      
       const updateData: Record<string, string | boolean> = {
         updated_at: new Date().toISOString()
       }
       
-      if (config.name !== undefined) updateData.name = config.name
-      if (config.source_repo !== undefined) updateData.source_repo = config.source_repo
-      if (config.target_repo !== undefined) updateData.target_repo = config.target_repo
-      if (config.enabled !== undefined) updateData.enabled = config.enabled
+      // Só adicionar campos que existem na tabela
+       if (config.name !== undefined && availableColumns.includes('name')) {
+         updateData.name = config.name
+       }
+       if (config.source_path !== undefined && availableColumns.includes('source_path')) {
+         updateData.source_path = config.source_path
+       }
+       if (config.target_repo !== undefined && availableColumns.includes('target_repo')) {
+         updateData.target_repo = config.target_repo
+       }
+       if (config.target_branch !== undefined && availableColumns.includes('target_branch')) {
+         updateData.target_branch = config.target_branch
+       }
+       if (config.github_token !== undefined && availableColumns.includes('github_token')) {
+         updateData.github_token = config.github_token
+       }
+       if (config.auto_sync !== undefined && availableColumns.includes('auto_sync')) {
+         updateData.auto_sync = config.auto_sync
+       }
+       if (config.sync_interval !== undefined && availableColumns.includes('sync_interval')) {
+         updateData.sync_interval = config.sync_interval
+       }
+       if (config.status !== undefined && availableColumns.includes('status')) {
+         updateData.status = config.status
+       }
+      
+      console.log('Dados para atualização (após verificação de schema):', updateData)
       
       const { data, error } = await supabase
         .from('sync_configs')
@@ -74,15 +140,30 @@ class SupabaseService {
         .single()
       
       if (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(`Erro ao atualizar configuração: ${errorMessage}`)
+        console.error('Erro do Supabase ao atualizar configuração:', {
+          error,
+          id,
+          updateData,
+          code: error.code,
+          message: error.message,
+          details: error.details
+        })
+        
+        // Tratar diferentes tipos de erro
+        if (error.code === 'PGRST116') {
+          throw new Error('Configuração não encontrada')
+        }
+        
+        if (error.code === '23505') {
+          throw new Error('Nome da configuração já existe')
+        }
+        
+        const errorMessage = error.message || 'Erro desconhecido ao atualizar configuração'
+        throw new Error(errorMessage)
       }
       
       return data
-    } catch (error: unknown) {
-      console.error('Erro ao atualizar configuração:', error)
-      throw error
-    }
+    })
   }
 
   /**
@@ -109,6 +190,50 @@ class SupabaseService {
     } catch (error: unknown) {
       console.error('Erro ao deletar configuração:', error)
       throw error
+    }
+  }
+
+  /**
+   * Testa conectividade com Supabase
+   */
+  async testConnection(): Promise<boolean> {
+    try {
+      const { data, error } = await supabase
+        .from('sync_configs')
+        .select('count')
+        .limit(1)
+      
+      if (error) {
+        console.error('Erro de conectividade com Supabase:', error)
+        return false
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Falha ao testar conexão com Supabase:', error)
+      return false
+    }
+  }
+
+  /**
+   * Verificar schema da tabela dinamicamente
+   */
+  private async getTableColumns(tableName: string): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from(tableName)
+        .select('*')
+        .limit(1)
+      
+      if (error) {
+        console.error('Erro ao verificar colunas da tabela:', error)
+        return []
+      }
+      
+      return data && data.length > 0 ? Object.keys(data[0]) : []
+    } catch (error) {
+      console.error('Falha ao verificar schema da tabela:', error)
+      return []
     }
   }
 
@@ -177,14 +302,15 @@ class SupabaseService {
           config_id: log.config_id,
           status: log.status,
           message: log.message,
-          files_processed: log.files_processed ?? 0
+          details: log.details ?? null,
+          files_changed: log.files_changed ?? 0
         })
         .select()
         .single()
       
       if (error) {
         const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      throw new Error(`Erro ao criar log: ${errorMessage}`)
+        throw new Error(`Erro ao criar log: ${errorMessage}`)
       }
       
       return data
@@ -239,7 +365,7 @@ class SupabaseService {
       const { count: activeConfigs } = await supabase
         .from('sync_configs')
         .select('*', { count: 'exact', head: true })
-        .eq('enabled', true)
+        .eq('auto_sync', true)
       
       // Contar logs
       const { count: totalSyncs } = await supabase

@@ -96,7 +96,7 @@ export default function LogsViewer({ logs, configs, onRefresh, loading = false, 
         formatDate(log.created_at),
         getConfigName(log.config_id),
         getStatusLabel(log.status),
-        log.files_processed.toString(),
+        log.files_changed.toString(),
         log.message.replace(/;/g, ',')
       ].join(';'))
     ].join('\n')
@@ -349,10 +349,10 @@ export default function LogsViewer({ logs, configs, onRefresh, loading = false, 
                       {getConfigName(log.config_id)}
                     </span>
                     
-                    {log.files_processed > 0 && (
+                    {log.files_changed > 0 && (
                       <span className="text-lg bg-blue-500/20 text-blue-300 px-6 py-3 rounded-2xl font-black flex items-center border-2 border-blue-500/40 shadow-xl backdrop-blur-xl">
                         <FileText className="w-5 h-5 mr-3" />
-                        {log.files_processed} files
+                        {log.files_changed} files
                       </span>
                     )}
                   </div>

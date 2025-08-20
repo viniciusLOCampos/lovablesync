@@ -3,6 +3,7 @@ import { Save, X, AlertCircle, Check, Github, Sparkles, Zap, Eye, EyeOff } from 
 import type { SyncConfig, CreateSyncConfig, UpdateSyncConfig, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
+import RepositoryDropdown from './RepositoryDropdown'
 
 interface SyncConfigFormProps {
   config?: SyncConfig
@@ -14,9 +15,10 @@ interface SyncConfigFormProps {
 export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: SyncConfigFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    sourceRepo: '',
+    sourcePath: '',
     targetRepo: '',
-    enabled: true
+    targetBranch: 'main',
+    autoSync: true
   })
   const [repositories, setRepositories] = useState<GitHubRepo[]>([])
   const [loading, setLoading] = useState(false)
@@ -29,16 +31,18 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     if (config) {
       setFormData({
         name: config.name,
-        sourceRepo: config.source_repo,
+        sourcePath: config.source_path,
         targetRepo: config.target_repo,
-        enabled: config.enabled
+        targetBranch: config.target_branch,
+        autoSync: config.auto_sync
       })
     } else {
       setFormData({
         name: '',
-        sourceRepo: '',
+        sourcePath: '',
         targetRepo: '',
-        enabled: true
+        targetBranch: 'main',
+        autoSync: true
       })
     }
     setErrors({})
@@ -55,7 +59,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
   const loadRepositories = async () => {
     setLoadingRepos(true)
     try {
-      const repos = await githubAuth.getPrivateRepositories()
+      const repos = await githubAuth.getUserRepositories()
       setRepositories(repos)
     } catch (error: unknown) {
       console.error('Erro ao carregar repositórios:', error)
@@ -143,9 +147,10 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     try {
       const configData = {
         name: formData.name.trim(),
-        source_repo: formData.sourceRepo.trim(),
+        source_path: formData.sourcePath.trim(),
         target_repo: formData.targetRepo.trim(),
-        enabled: formData.enabled
+        target_branch: formData.targetBranch.trim(),
+        auto_sync: formData.autoSync
       }
 
       await onSave(configData)
@@ -266,156 +271,72 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
               )}
             </div>
 
-          {/* Source Repository */}
-          <div className="group">
-            <label htmlFor="sourceRepo" className="block text-lg font-bold text-white mb-4 flex items-center">
-              <div className="p-2 bg-blue-500 rounded-xl mr-3">
-                <Github className="w-4 h-4 text-white" />
-              </div>
-              Source Repository
-              <span className="ml-3 text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full font-medium border border-blue-500/30">Source</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="sourceRepo"
-                value={formData.sourceRepo}
-                onChange={(e) => {
-                  setFormData(prev => ({ ...prev, sourceRepo: e.target.value }))
-                  if (e.target.value.includes('/')) {
-                    validateRepository(e.target.value, 'sourceRepo')
-                  }
-                }}
-                className={`w-full px-6 py-4 pr-16 border-2 rounded-2xl shadow-lg focus:outline-none transition-all duration-300 text-white text-lg ${
-                  errors.sourceRepo 
-                    ? 'border-red-500/50 bg-red-500/10 focus:border-red-400 focus:ring-4 focus:ring-red-500/20' 
-                    : validationStatus.sourceRepo === 'valid'
-                    ? 'border-green-500/50 bg-green-500/10 focus:border-green-400 focus:ring-4 focus:ring-green-500/20'
-                    : 'border-white/[0.08] bg-white/[0.02] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 hover:border-white/[0.12]'
-                }`}
-                placeholder="owner/repository"
-              />
-              <div className="absolute inset-y-0 right-0 pr-6 flex items-center">
-                {getValidationIcon('sourceRepo')}
-              </div>
-            </div>
-            {errors.sourceRepo && (
-              <p className="mt-3 text-sm text-red-300 flex items-center animate-in slide-in-from-left duration-300">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {errors.sourceRepo}
-              </p>
-            )}
-            
-            {/* Repository List */}
-            {repositories.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm text-slate-400 mb-4 flex items-center font-medium">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Or select from your repositories:
-                </p>
-                <div className="max-h-40 overflow-y-auto border-2 border-white/[0.08] rounded-2xl shadow-inner bg-slate-800/30">
-                  {repositories.map((repo, index) => (
-                    <button
-                      key={repo.full_name}
-                      type="button"
-                      onClick={() => handleRepoSelect(repo.full_name, 'sourceRepo')}
-                      className="group w-full text-left px-6 py-4 text-sm hover:bg-blue-500/10 border-b border-white/[0.05] last:border-b-0 transition-all duration-200 hover:shadow-md flex items-center"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <Github className="w-5 h-5 mr-3 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                      <span className="group-hover:text-blue-300 font-medium text-white">{repo.full_name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <RepositoryDropdown
+            label="Source Repository"
+            value={formData.sourceRepo}
+            repositories={repositories}
+            loading={loadingRepos}
+            onSelect={(repoFullName) => {
+              setFormData(prev => ({ ...prev, sourceRepo: repoFullName }))
+              validateRepository(repoFullName, 'sourceRepo')
+            }}
+            colorScheme="blue"
+            placeholder="owner/repository"
+            error={errors.sourceRepo}
+            validationStatus={validationStatus.sourceRepo}
+            validationIcon={getValidationIcon('sourceRepo')}
+            allowManualInput
+            onManualInputChange={(value) => {
+              setFormData(prev => ({ ...prev, sourceRepo: value }))
+              if (value.includes('/')) {
+                validateRepository(value, 'sourceRepo')
+              }
+            }}
+          />
 
-          {/* Target Repository */}
-          <div className="group">
-            <label htmlFor="targetRepo" className="block text-lg font-bold text-white mb-4 flex items-center">
-              <div className="p-2 bg-emerald-500 rounded-xl mr-3">
-                <Github className="w-4 h-4 text-white" />
-              </div>
-              Target Repository
-              <span className="ml-3 text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full font-medium border border-emerald-500/30">Target</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                id="targetRepo"
-                value={formData.targetRepo}
-                onChange={(e) => {
-                  setFormData(prev => ({ ...prev, targetRepo: e.target.value }))
-                  if (e.target.value.includes('/')) {
-                    validateRepository(e.target.value, 'targetRepo')
-                  }
-                }}
-                className={`w-full px-6 py-4 pr-16 border-2 rounded-2xl shadow-lg focus:outline-none transition-all duration-300 text-white text-lg ${
-                  errors.targetRepo 
-                    ? 'border-red-500/50 bg-red-500/10 focus:border-red-400 focus:ring-4 focus:ring-red-500/20' 
-                    : validationStatus.targetRepo === 'valid'
-                    ? 'border-green-500/50 bg-green-500/10 focus:border-green-400 focus:ring-4 focus:ring-green-500/20'
-                    : 'border-white/[0.08] bg-white/[0.02] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 hover:border-white/[0.12]'
-                }`}
-                placeholder="owner/repository"
-              />
-              <div className="absolute inset-y-0 right-0 pr-6 flex items-center">
-                {getValidationIcon('targetRepo')}
-              </div>
-            </div>
-            {errors.targetRepo && (
-              <p className="mt-3 text-sm text-red-300 flex items-center animate-in slide-in-from-left duration-300">
-                <AlertCircle className="w-4 h-4 mr-2" />
-                {errors.targetRepo}
-              </p>
-            )}
-            
-            {/* Repository List */}
-            {repositories.length > 0 && (
-              <div className="mt-6">
-                <p className="text-sm text-slate-400 mb-4 flex items-center font-medium">
-                  <EyeOff className="w-4 h-4 mr-2" />
-                  Or select from your repositories:
-                </p>
-                <div className="max-h-40 overflow-y-auto border-2 border-white/[0.08] rounded-2xl shadow-inner bg-slate-800/30">
-                  {repositories.map((repo, index) => (
-                    <button
-                      key={repo.full_name}
-                      type="button"
-                      onClick={() => handleRepoSelect(repo.full_name, 'targetRepo')}
-                      className="group w-full text-left px-6 py-4 text-sm hover:bg-emerald-500/10 border-b border-white/[0.05] last:border-b-0 transition-all duration-200 hover:shadow-md flex items-center"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <Github className="w-5 h-5 mr-3 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-                      <span className="group-hover:text-emerald-300 font-medium text-white">{repo.full_name}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <RepositoryDropdown
+            label="Target Repository"
+            value={formData.targetRepo}
+            repositories={repositories}
+            loading={loadingRepos}
+            onSelect={(repoFullName) => {
+              setFormData(prev => ({ ...prev, targetRepo: repoFullName }))
+              validateRepository(repoFullName, 'targetRepo')
+            }}
+            colorScheme="emerald"
+            placeholder="owner/repository"
+            error={errors.targetRepo}
+            validationStatus={validationStatus.targetRepo}
+            validationIcon={getValidationIcon('targetRepo')}
+            allowManualInput
+            onManualInputChange={(value) => {
+              setFormData(prev => ({ ...prev, targetRepo: value }))
+              if (value.includes('/')) {
+                validateRepository(value, 'targetRepo')
+              }
+            }}
+          />
 
           {/* Enable Configuration */}
           <div className="group flex items-center p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border-2 border-white/[0.08] shadow-lg backdrop-blur-sm">
             <div className="relative">
               <input
                 type="checkbox"
-                id="enabled"
-                checked={formData.enabled}
-                onChange={(e) => setFormData(prev => ({ ...prev, enabled: e.target.checked }))}
+                id="autoSync"
+                checked={formData.autoSync}
+                onChange={(e) => setFormData(prev => ({ ...prev, autoSync: e.target.checked }))}
                 className="h-6 w-6 text-blue-600 focus:ring-blue-500 border-white/[0.12] bg-white/[0.05] rounded-lg transition-all duration-300 transform hover:scale-110"
               />
-              {formData.enabled && (
+              {formData.autoSync && (
                 <div className="absolute inset-0 animate-ping h-6 w-6 bg-blue-400 rounded-lg opacity-30" />
               )}
             </div>
-            <label htmlFor="enabled" className="ml-4 block text-lg font-bold text-white flex items-center">
+            <label htmlFor="autoSync" className="ml-4 block text-lg font-bold text-white flex items-center">
               <Zap className={`w-5 h-5 mr-3 transition-colors duration-300 ${
-                formData.enabled ? 'text-green-400' : 'text-slate-400'
+                formData.autoSync ? 'text-green-400' : 'text-slate-400'
               }`} />
-              Enable Configuration
-              {formData.enabled && (
+              Auto Sync Configuration
+              {formData.autoSync && (
                 <span className="ml-3 text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full font-medium animate-pulse border border-green-500/30">
                   Active
                 </span>

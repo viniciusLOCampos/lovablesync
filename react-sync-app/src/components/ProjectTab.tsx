@@ -1,7 +1,12 @@
-import { useState, useEffect } from 'react'
-import { Edit, Trash2, Power, PowerOff, Github, ArrowRight, Clock, CheckCircle, AlertCircle, Activity, Zap, TrendingUp, BarChart3 } from 'lucide-react'
-import type { SyncConfig, SyncLog, SyncProgress } from '../types'
+import React, { useState, useEffect } from 'react'
+import { ArrowRight, Github, ChevronDown, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp } from 'lucide-react'
+import type { SyncConfig, SyncLog, SyncProgress, GitHubRepo } from '../types'
+import { githubAuth } from '../services/auth'
+import { supabaseService } from '../services/supabase'
 import LogsViewer from './LogsViewer'
+import RepositoryDropdown from './RepositoryDropdown'
+import ProjectStatsCard from './ProjectStatsCard'
+import ProjectActionButtons from './ProjectActionButtons'
 
 interface ProjectTabProps {
   config: SyncConfig
@@ -14,6 +19,8 @@ interface ProjectTabProps {
   isSyncing: boolean
   onRefreshLogs: () => void
   loading: boolean
+  onUpdateConfig: (config: SyncConfig) => void
+  allConfigs: SyncConfig[]
 }
 
 const ProjectTab = ({
@@ -26,11 +33,17 @@ const ProjectTab = ({
   onToggleEnabled,
   isSyncing,
   onRefreshLogs,
-  loading
+  loading,
+  onUpdateConfig,
+  allConfigs
 }: ProjectTabProps) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'logs'>('overview')
   const [isVisible, setIsVisible] = useState(false)
   const [pulseSync, setPulseSync] = useState(false)
+  const [showSourceRepos, setShowSourceRepos] = useState(false)
+  const [showTargetRepos, setShowTargetRepos] = useState(false)
+  const [userRepositories, setUserRepositories] = useState<GitHubRepo[]>([])
+  const [loadingRepos, setLoadingRepos] = useState(false)
 
   // Animação de entrada
   useEffect(() => {
@@ -48,10 +61,80 @@ const ProjectTab = ({
 
   const projectLogs = logs.filter(log => log.config_id === config.id)
   const lastSync = projectLogs.find(log => log.status === 'success')
+
+  // Carregar repositórios do usuário do GitHub
+  const loadUserRepositories = async () => {
+    if (userRepositories.length > 0) return // Já carregados
+    
+    setLoadingRepos(true)
+    try {
+      const repos = await githubAuth.getUserRepositories()
+      setUserRepositories(repos)
+    } catch (error) {
+      console.error('Erro ao carregar repositórios:', error)
+    } finally {
+      setLoadingRepos(false)
+    }
+  }
+
+  // Atualizar repositório
+  const handleRepoUpdate = async (repoName: string, type: 'source' | 'target') => {
+    try {
+      // Validar entrada
+      if (!repoName || typeof repoName !== 'string') {
+        console.error('Nome do repositório inválido:', repoName)
+        return
+      }
+      
+      if (!config?.id) {
+        console.error('ID da configuração não encontrado')
+        return
+      }
+      
+      const updateData = {
+        [type === 'source' ? 'source_path' : 'target_repo']: repoName
+      }
+      
+      const updatedConfig = await supabaseService.updateConfig(config.id, updateData)
+      
+      onUpdateConfig(updatedConfig)
+      
+      // Fechar dropdown
+      if (type === 'source') setShowSourceRepos(false)
+      if (type === 'target') setShowTargetRepos(false)
+      
+    } catch (error) {
+      console.error('Erro ao atualizar repositório:', error)
+      
+      // Mostrar mensagem de erro mais específica
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      console.error(`Falha ao atualizar repositório ${type}: ${errorMessage}`)
+    }
+  }
+
+  // Carregar repositórios do usuário na inicialização
+  useEffect(() => {
+    loadUserRepositories()
+  }, [])
+
+  // Abrir dropdown e carregar repos se necessário
+  const handleDropdownToggle = (type: 'source' | 'target') => {
+    if (type === 'source') {
+      setShowSourceRepos(!showSourceRepos)
+      setShowTargetRepos(false)
+    } else {
+      setShowTargetRepos(!showTargetRepos)
+      setShowSourceRepos(false)
+    }
+    
+    if (userRepositories.length === 0) {
+      loadUserRepositories()
+    }
+  }
   const lastError = projectLogs.find(log => log.status === 'error')
 
   const getStatusColor = () => {
-    if (!config.enabled) return 'text-gray-500'
+    if (!config.auto_sync) return 'text-gray-500'
     if (isSyncing) return 'text-blue-500'
     if (lastError && (!lastSync || new Date(lastError.created_at) > new Date(lastSync.created_at))) {
       return 'text-red-500'
@@ -61,7 +144,7 @@ const ProjectTab = ({
   }
 
   const getStatusIcon = () => {
-    if (!config.enabled) return <PowerOff className="w-5 h-5" />
+    if (!config.auto_sync) return <PowerOff className="w-5 h-5" />
     if (isSyncing) return <Activity className="w-5 h-5 animate-spin" />
     if (lastError && (!lastSync || new Date(lastError.created_at) > new Date(lastSync.created_at))) {
       return <AlertCircle className="w-5 h-5" />
@@ -71,7 +154,7 @@ const ProjectTab = ({
   }
 
   const getStatusText = () => {
-    if (!config.enabled) return 'Desabilitado'
+    if (!config.auto_sync) return 'Desabilitado'
     if (isSyncing) return 'Sincronizando...'
     if (lastError && (!lastSync || new Date(lastError.created_at) > new Date(lastSync.created_at))) {
       return 'Erro na última sincronização'
@@ -107,76 +190,62 @@ const ProjectTab = ({
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => onToggleEnabled(config)}
-              className={`group p-3 rounded-xl transition-all duration-300 transform hover:scale-110 ${
-                config.enabled
-                  ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/25 hover:shadow-xl hover:shadow-green-500/40'
-                  : 'bg-gradient-to-r from-slate-500 to-slate-600 text-white shadow-lg shadow-slate-500/25 hover:shadow-xl hover:shadow-slate-500/40'
-              }`}
-              title={config.enabled ? 'Pause project' : 'Activate project'}
-            >
-              {config.enabled ? 
-                <Power className="w-4 h-4 group-hover:rotate-12 transition-transform" /> : 
-                <PowerOff className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-              }
-            </button>
-            
-            <button
-              onClick={() => onEdit(config)}
-              className="group p-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-500 hover:to-indigo-500 transition-all duration-300 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/40 transform hover:scale-110"
-              title="Edit configuration"
-            >
-              <Edit className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            </button>
-            
-            <button
-              onClick={() => onDelete(config)}
-              className="group p-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-500 hover:to-red-600 transition-all duration-300 shadow-lg shadow-red-500/25 hover:shadow-xl hover:shadow-red-500/40 transform hover:scale-110"
-              title="Delete project"
-            >
-              <Trash2 className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            </button>
-          </div>
+          <ProjectActionButtons
+             config={config}
+            isSyncing={isSyncing}
+            onToggleEnabled={onToggleEnabled}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onSync={onSync}
+           />
         </div>
         
         {/* Repository Flow */}
         <div className="flex items-center justify-center space-x-8 p-6 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
-          <div className="group flex items-center space-x-4 bg-blue-500/10 px-6 py-4 rounded-2xl border border-blue-500/20 hover:bg-blue-500/15 transition-all duration-300">
-            <div className="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl shadow-lg">
-              <Github className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-semibold text-white text-lg">{config.source_repo}</span>
-              <span className="text-xs bg-blue-500/20 text-blue-300 px-3 py-1 rounded-full font-medium">Source Repository</span>
-            </div>
-          </div>
+          <RepositoryDropdown
+            label=""
+            value={config.source_path}
+            repositories={userRepositories}
+            loading={loadingRepos}
+            isOpen={showSourceRepos}
+            onToggle={() => handleDropdownToggle('source')}
+            onSelect={(repoFullName) => handleRepoUpdate(repoFullName, 'source')}
+            colorScheme="blue"
+            placeholder="Selecione um repositório"
+            variant="card"
+            showLabel={false}
+            cardTitle="Source Repository"
+          />
           
           <div className="flex flex-col items-center space-y-2">
             <ArrowRight className="w-8 h-8 text-blue-400 animate-pulse" />
             <div className="w-3 h-3 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-ping" />
           </div>
           
-          <div className="group flex items-center space-x-4 bg-emerald-500/10 px-6 py-4 rounded-2xl border border-emerald-500/20 hover:bg-emerald-500/15 transition-all duration-300">
-            <div className="p-3 bg-gradient-to-r from-emerald-500 to-green-500 rounded-xl shadow-lg">
-              <Github className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-semibold text-white text-lg">{config.target_repo}</span>
-              <span className="text-xs bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full font-medium">Target Repository</span>
-            </div>
-          </div>
+          <RepositoryDropdown
+            label=""
+            value={config.target_repo}
+            repositories={userRepositories}
+            loading={loadingRepos}
+            isOpen={showTargetRepos}
+            onToggle={() => handleDropdownToggle('target')}
+            onSelect={(repoFullName) => handleRepoUpdate(repoFullName, 'target')}
+            colorScheme="emerald"
+            placeholder="Selecione um repositório"
+            variant="card"
+            showLabel={false}
+            cardTitle="Target Repository"
+          />
         </div>
         
         {/* Sync Button */}
         <div className="mt-6 flex justify-center">
           <button
             onClick={() => onSync(config)}
-            disabled={!config.enabled || isSyncing}
+            disabled={!config.auto_sync || isSyncing}
             className={`
               group relative flex items-center space-x-4 px-10 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform
-              ${config.enabled && !isSyncing
+              ${config.auto_sync && !isSyncing
                 ? `bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white 
                    hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 
                    shadow-2xl shadow-blue-500/30 hover:shadow-blue-500/50 
@@ -187,7 +256,7 @@ const ProjectTab = ({
             `}
           >
             {/* Glow effect */}
-            {config.enabled && !isSyncing && (
+            {config.auto_sync && !isSyncing && (
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/10 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             )}
             
@@ -208,7 +277,7 @@ const ProjectTab = ({
                   )}
                 </div>
                 <span className="relative z-10">Sync Now</span>
-                {config.enabled && (
+                {config.auto_sync && (
                   <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse shadow-lg shadow-green-400/50" />
                 )}
               </>
@@ -330,7 +399,7 @@ const ProjectTab = ({
                     <div className="flex justify-between">
                       <dt className="text-slate-400">Status:</dt>
                       <dd className={`font-medium ${getStatusColor()}`}>
-                        {config.enabled ? 'Active' : 'Inactive'}
+                        {config.auto_sync ? 'Active' : 'Inactive'}
                       </dd>
                     </div>
                     <div className="flex justify-between">

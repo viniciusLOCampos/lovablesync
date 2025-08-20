@@ -144,11 +144,11 @@ export default function ConfigList({
                     
                     {/* Status Badge */}
                     <span className={`inline-flex items-center px-4 py-2 rounded-2xl text-lg font-black shadow-xl border-2 ${
-                      config.enabled
+                      config.auto_sync
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-emerald-500/30'
                         : 'bg-gray-500/20 text-gray-300 border-gray-500/40 shadow-gray-500/30'
                     }`}>
-                      {config.enabled ? 'Ativo' : 'Inativo'}
+                      {config.auto_sync ? 'Ativo' : 'Inativo'}
                     </span>
                     
                     {/* Syncing Indicator */}
@@ -168,7 +168,7 @@ export default function ConfigList({
                       </div>
                       <span className="font-black mr-3">Origem:</span>
                       <code className="bg-gray-800/60 px-4 py-2 rounded-2xl text-lg font-mono font-bold border border-white/[0.15] shadow-lg backdrop-blur-xl">
-                        {config.source_repo}
+                        {config.source_path}
                       </code>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -200,13 +200,13 @@ export default function ConfigList({
                     onClick={() => onToggleEnabled(config)}
                     disabled={isCurrentlySyncing}
                     className={`p-4 rounded-2xl transition-all duration-300 shadow-xl hover:shadow-2xl ${
-                      config.enabled
+                      config.auto_sync
                         ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30 border-2 border-emerald-500/40'
                         : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30 border-2 border-gray-500/40'
                     } disabled:opacity-50 disabled:cursor-not-allowed group`}
-                    title={config.enabled ? 'Desativar' : 'Ativar'}
+                    title={config.auto_sync ? 'Desativar' : 'Ativar'}
                   >
-                    {config.enabled ? (
+                    {config.auto_sync ? (
                       <Pause className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
                     ) : (
                       <Play className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
@@ -216,7 +216,7 @@ export default function ConfigList({
                   {/* Sync Button */}
                   <button
                     onClick={() => onSync(config)}
-                    disabled={!config.enabled || isCurrentlySyncing}
+                    disabled={!config.auto_sync || isCurrentlySyncing}
                     className="p-4 bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 rounded-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-xl hover:shadow-2xl border-2 border-blue-500/40 group"
                     title="Sincronizar agora"
                   >

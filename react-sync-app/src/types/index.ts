@@ -2,25 +2,37 @@
 export interface SyncConfig {
   id: string
   name: string
-  source_repo: string
+  source_path: string
   target_repo: string
-  enabled: boolean
+  target_branch: string
+  github_token: string | null
+  auto_sync: boolean
+  sync_interval: number
+  last_sync: string | null
+  status: 'active' | 'inactive'
   created_at: string
   updated_at: string
 }
 
 export interface CreateSyncConfig {
   name: string
-  source_repo: string
+  source_path: string
   target_repo: string
-  enabled?: boolean
+  target_branch?: string
+  github_token?: string | null
+  auto_sync?: boolean
+  sync_interval?: number
 }
 
 export interface UpdateSyncConfig {
   name?: string
-  source_repo?: string
+  source_path?: string
   target_repo?: string
-  enabled?: boolean
+  target_branch?: string
+  github_token?: string | null
+  auto_sync?: boolean
+  sync_interval?: number
+  status?: 'active' | 'inactive'
 }
 
 // Tipos para logs de sincronização
@@ -31,7 +43,8 @@ export interface SyncLog {
   config_id: string
   status: SyncStatus
   message: string
-  files_processed: number
+  details: string | null
+  files_changed: number
   created_at: string
 }
 
@@ -39,7 +52,8 @@ export interface CreateSyncLog {
   config_id: string
   status: SyncStatus
   message: string
-  files_processed?: number
+  details?: string | null
+  files_changed?: number
 }
 
 // Tipos para operações de sincronização
@@ -68,6 +82,7 @@ export interface GitHubAuth {
 
 // Tipos para repositórios GitHub
 export interface GitHubRepo {
+  id: number
   owner: string
   name: string
   full_name: string
@@ -86,9 +101,10 @@ export interface GitHubFile {
 // Tipos para componentes
 export interface SyncConfigFormData {
   name: string
-  sourceRepo: string
+  sourcePath: string
   targetRepo: string
-  enabled: boolean
+  targetBranch: string
+  autoSync: boolean
 }
 
 export interface ProgressBarProps {

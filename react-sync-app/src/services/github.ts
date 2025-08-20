@@ -67,7 +67,7 @@ class GitHubSyncService {
       })
 
       if ('content' in data && data.content) {
-        return Buffer.from(data.content, 'base64').toString('utf-8')
+        return atob(data.content)
       }
       
       throw new Error('Arquivo não encontrado ou sem conteúdo')
@@ -108,7 +108,7 @@ class GitHubSyncService {
     sha?: string
   ): Promise<void> {
     try {
-      const encodedContent = Buffer.from(content, 'utf-8').toString('base64')
+      const encodedContent = btoa(content)
       
       await this.getOctokit().rest.repos.createOrUpdateFileContents({
         owner,

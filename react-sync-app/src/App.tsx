@@ -38,10 +38,27 @@ function App() {
   // Carregar dados quando autenticado
   useEffect(() => {
     if (isAuthenticated) {
+      testSupabaseConnection()
       loadConfigs()
       loadLogs()
     }
   }, [isAuthenticated])
+
+  // Testar conectividade com Supabase
+  const testSupabaseConnection = async () => {
+    try {
+      const isConnected = await supabaseService.testConnection()
+      if (!isConnected) {
+        setError('Falha na conexão com o banco de dados. Verifique a configuração do Supabase.')
+        console.error('Supabase não está acessível')
+      } else {
+        console.log('Conexão com Supabase estabelecida com sucesso')
+      }
+    } catch (error) {
+      console.error('Erro ao testar conexão com Supabase:', error)
+      setError('Erro ao conectar com o banco de dados')
+    }
+  }
 
   // Atualizar aba ativa quando configs mudam
   useEffect(() => {
@@ -152,12 +169,18 @@ function App() {
 
   const handleToggleEnabled = async (config: SyncConfig) => {
     try {
-      await supabaseService.updateConfig(config.id, { enabled: !config.enabled })
+      await supabaseService.updateConfig(config.id, { auto_sync: !config.auto_sync })
       await loadConfigs()
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
       setError('Erro ao atualizar configuração: ' + errorMessage)
     }
+  }
+
+  const handleUpdateConfig = (updatedConfig: SyncConfig) => {
+    setConfigs(prev => prev.map(config => 
+      config.id === updatedConfig.id ? updatedConfig : config
+    ))
   }
 
   const handleSync = async (config: SyncConfig) => {
@@ -186,7 +209,7 @@ function App() {
       })
       
       // Executar sincronização
-      const [sourceOwner, sourceRepo] = config.source_repo.split('/')
+      const [sourceOwner, sourceRepo] = config.source_path.split('/')
       const [targetOwner, targetRepo] = config.target_repo.split('/')
       
       const result = await githubSync.syncRepositories(
@@ -209,7 +232,7 @@ function App() {
         message: result.success 
           ? `Sincronização concluída com sucesso. ${result.filesProcessed} arquivos processados em ${Math.round(result.duration / 1000)}s`
           : `Erro na sincronização: ${result.error}`,
-        files_processed: result.filesProcessed
+        files_changed: result.filesProcessed
       })
       
       // Atualizar progresso final
@@ -267,7 +290,22 @@ function App() {
   }
 
   const handleCreateNew = () => {
-    setEditingConfig(undefined)
+    // Criar um exemplo de configuração
+    const exampleConfig: CreateSyncConfig = {
+      name: 'Exemplo de Projeto',
+      source_path: 'usuario/repositorio-origem',
+      target_repo: 'usuario/repositorio-destino',
+      target_branch: 'main',
+      auto_sync: true
+    }
+    
+    // Definir como configuração de edição para pré-preencher o formulário
+    setEditingConfig({
+      id: 'temp-example',
+      ...exampleConfig,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as SyncConfig)
     setShowConfigForm(true)
   }
 
@@ -567,6 +605,8 @@ function App() {
                   onDelete={handleDeleteConfig}
                   onSync={handleSync}
                   onToggleEnabled={handleToggleEnabled}
+                  onUpdateConfig={handleUpdateConfig}
+                  allConfigs={configs}
                   isSyncing={syncingConfigs.includes(getCurrentConfig()!.id)}
                   onRefreshLogs={loadLogs}
                   loading={loading}

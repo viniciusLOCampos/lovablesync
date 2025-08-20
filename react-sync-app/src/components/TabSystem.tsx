@@ -43,7 +43,7 @@ const TabSystem = ({ configs, activeTabId, onTabChange, onCreateNew, onCloseTab 
     }
     
     // Ícones baseados no status do projeto
-    if (tab.config?.enabled === false) {
+    if (tab.config?.auto_sync === false) {
       return <Pause className="w-4 h-4" />
     }
     
@@ -62,7 +62,7 @@ const TabSystem = ({ configs, activeTabId, onTabChange, onCreateNew, onCloseTab 
         : 'bg-gray-950/50 border-white/[0.08] text-slate-400 hover:text-emerald-400 hover:border-emerald-400/20 hover:shadow-lg hover:shadow-emerald-500/10'}`
     }
     
-    if (tab.config?.enabled === false) {
+    if (tab.config?.auto_sync === false) {
       if (isActive) {
         return `${baseStyles} bg-gray-950/90 border-slate-400/30 text-white shadow-2xl shadow-slate-500/40 hover:shadow-slate-500/60`
       }
@@ -82,7 +82,7 @@ const TabSystem = ({ configs, activeTabId, onTabChange, onCreateNew, onCloseTab 
   const getStatusIndicator = (tab: Tab) => {
     if (tab.type === 'new') return null
     
-    if (tab.config?.enabled === false) {
+    if (tab.config?.auto_sync === false) {
       return (
         <div className="flex items-center ml-auto">
           <div className="relative">
