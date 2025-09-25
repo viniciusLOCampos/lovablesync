@@ -171,7 +171,7 @@ const ProjectTab = ({
       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
     }`}>
       {/* Project Header */}
-      <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 shadow-2xl shadow-black/10">
+      <div className="relative z-10 bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 shadow-2xl shadow-black/10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <div className={`p-4 rounded-2xl transition-all duration-300 ${
@@ -201,7 +201,7 @@ const ProjectTab = ({
         </div>
         
         {/* Repository Flow */}
-        <div className="flex items-center justify-center space-x-8 p-6 bg-white/[0.02] rounded-2xl border border-white/[0.05]">
+        <div className="relative z-20 flex items-center justify-center space-x-8 p-6 bg-white/[0.02] rounded-2xl border border-white/[0.05] overflow-visible">
           <RepositoryDropdown
             label=""
             value={config.source_path}
@@ -334,7 +334,7 @@ const ProjectTab = ({
       )}
       
       {/* Section Navigation */}
-      <div className="bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/10 overflow-hidden">
+      <div className="relative z-0 bg-white/[0.02] backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-2xl shadow-black/10 overflow-hidden">
         <div className="border-b border-white/[0.08] bg-gradient-to-r from-slate-800/30 to-slate-900/30">
           <nav className="flex space-x-2 px-6">
             <button

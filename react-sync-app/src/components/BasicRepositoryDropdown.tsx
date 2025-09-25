@@ -39,7 +39,7 @@ const BasicRepositoryDropdown: React.FC<BasicRepositoryDropdownProps> = ({
   const selectedRepo = repositories.find(repo => repo.full_name === value)
 
   return (
-    <div className="relative">
+    <div className={`relative ${isOpen ? 'z-50' : 'z-auto'}`}>
       <button
         type="button"
         onClick={onToggle}
@@ -63,7 +63,7 @@ const BasicRepositoryDropdown: React.FC<BasicRepositoryDropdownProps> = ({
       </button>
 
       {isOpen && !loading && (
-        <div className={`absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto ${colorClasses[colorScheme].dropdown}`}>
+        <div className={`absolute left-0 right-0 z-50 mt-1 w-full bg-white border rounded-md shadow-lg max-h-60 overflow-auto ${colorClasses[colorScheme].dropdown}`}>
           {repositories.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">
               Nenhum repositório encontrado
