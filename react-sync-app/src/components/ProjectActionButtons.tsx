@@ -1,4 +1,3 @@
-import React from 'react'
 import { Play, Pause, Edit, Trash2, Power, PowerOff } from 'lucide-react'
 import type { SyncConfig } from '../types'
 

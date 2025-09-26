@@ -100,7 +100,7 @@ class SupabaseService {
       const availableColumns = await this.getTableColumns('sync_configs')
       console.log('Colunas disponíveis na tabela sync_configs:', availableColumns)
       
-      const updateData: Record<string, string | boolean> = {
+      const updateData: Record<string, string | number | boolean | null> = {
         updated_at: new Date().toISOString()
       }
       
@@ -198,7 +198,7 @@ class SupabaseService {
    */
   async testConnection(): Promise<boolean> {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('sync_configs')
         .select('count')
         .limit(1)
@@ -426,3 +426,4 @@ class SupabaseService {
 
 export const supabaseService = new SupabaseService()
 export default supabaseService
+

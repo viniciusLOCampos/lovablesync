@@ -196,6 +196,7 @@ function App() {
       currentStep: 'deleting',
       filesProcessed: 0,
       totalFiles: 0,
+      progress: 0,
       message: 'Iniciando sincronização...'
     }
     setSyncProgress(prev => [...prev.filter(p => p.configId !== config.id), initialProgress])
@@ -245,6 +246,7 @@ function App() {
           currentStep: result.success ? 'completed' : 'error',
           filesProcessed: result.filesProcessed,
           totalFiles: result.filesProcessed,
+          progress: result.success ? 100 : 0,
           message: result.success 
             ? `Sincronização concluída! ${result.filesProcessed} arquivos processados.`
             : `Erro: ${result.error}`
@@ -274,6 +276,7 @@ function App() {
           currentStep: 'error',
           filesProcessed: 0,
           totalFiles: 0,
+          progress: 0,
           message: `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
         }
       ])
@@ -606,7 +609,6 @@ function App() {
                   onSync={handleSync}
                   onToggleEnabled={handleToggleEnabled}
                   onUpdateConfig={handleUpdateConfig}
-                  allConfigs={configs}
                   isSyncing={syncingConfigs.includes(getCurrentConfig()!.id)}
                   onRefreshLogs={loadLogs}
                   loading={loading}

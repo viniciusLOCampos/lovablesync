@@ -1,5 +1,4 @@
 import React from 'react'
-import { Github } from 'lucide-react'
 import type { GitHubRepo } from '../types'
 import ManualRepositoryInput from './ManualRepositoryInput'
 import RepositorySuggestionList from './RepositorySuggestionList'
@@ -17,7 +16,6 @@ interface RepositoryDropdownProps {
   placeholder: string
   variant?: 'default' | 'card'
   showLabel?: boolean
-  cardTitle?: string
   error?: string
   validationStatus?: 'valid' | 'invalid' | 'validating'
   validationIcon?: React.ReactNode
@@ -37,7 +35,6 @@ const RepositoryDropdown: React.FC<RepositoryDropdownProps> = ({
   placeholder,
   variant = 'default',
   showLabel = true,
-  cardTitle,
   error,
   validationStatus,
   validationIcon,

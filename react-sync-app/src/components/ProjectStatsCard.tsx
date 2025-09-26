@@ -1,4 +1,3 @@
-import React from 'react'
 import { Activity, Clock, CheckCircle, AlertCircle } from 'lucide-react'
 import type { SyncLog, SyncProgress } from '../types'
 

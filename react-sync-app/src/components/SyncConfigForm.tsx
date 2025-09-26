@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Save, X, AlertCircle, Check, Github, Sparkles, Zap, Eye, EyeOff } from 'lucide-react'
+import { Save, X, AlertCircle, Check, Github, Sparkles, Zap } from 'lucide-react'
 import type { SyncConfig, CreateSyncConfig, UpdateSyncConfig, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
@@ -15,7 +15,7 @@ interface SyncConfigFormProps {
 export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: SyncConfigFormProps) {
   const [formData, setFormData] = useState({
     name: '',
-    sourcePath: '',
+    sourceRepo: '',
     targetRepo: '',
     targetBranch: 'main',
     autoSync: true
@@ -31,7 +31,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     if (config) {
       setFormData({
         name: config.name,
-        sourcePath: config.source_path,
+        sourceRepo: config.source_path,
         targetRepo: config.target_repo,
         targetBranch: config.target_branch,
         autoSync: config.auto_sync
@@ -39,7 +39,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     } else {
       setFormData({
         name: '',
-        sourcePath: '',
+        sourceRepo: '',
         targetRepo: '',
         targetBranch: 'main',
         autoSync: true
@@ -147,7 +147,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     try {
       const configData = {
         name: formData.name.trim(),
-        source_path: formData.sourcePath.trim(),
+        source_path: formData.sourceRepo.trim(),
         target_repo: formData.targetRepo.trim(),
         target_branch: formData.targetBranch.trim(),
         auto_sync: formData.autoSync
@@ -160,11 +160,6 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     } finally {
       setLoading(false)
     }
-  }
-
-  const handleRepoSelect = (repoFullName: string, field: 'sourceRepo' | 'targetRepo') => {
-    setFormData(prev => ({ ...prev, [field]: repoFullName }))
-    validateRepository(repoFullName, field)
   }
 
   const getValidationIcon = (field: 'sourceRepo' | 'targetRepo') => {

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react'
-import { ArrowRight, Github, ChevronDown, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp } from 'lucide-react'
 import type { SyncConfig, SyncLog, SyncProgress, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
 import LogsViewer from './LogsViewer'
 import RepositoryDropdown from './RepositoryDropdown'
-import ProjectStatsCard from './ProjectStatsCard'
 import ProjectActionButtons from './ProjectActionButtons'
-
 interface ProjectTabProps {
   config: SyncConfig
   logs: SyncLog[]
@@ -20,9 +18,7 @@ interface ProjectTabProps {
   onRefreshLogs: () => void
   loading: boolean
   onUpdateConfig: (config: SyncConfig) => void
-  allConfigs: SyncConfig[]
 }
-
 const ProjectTab = ({
   config,
   logs,
@@ -34,8 +30,7 @@ const ProjectTab = ({
   isSyncing,
   onRefreshLogs,
   loading,
-  onUpdateConfig,
-  allConfigs
+  onUpdateConfig
 }: ProjectTabProps) => {
   const [activeSection, setActiveSection] = useState<'overview' | 'logs'>('overview')
   const [isVisible, setIsVisible] = useState(false)
@@ -44,12 +39,10 @@ const ProjectTab = ({
   const [showTargetRepos, setShowTargetRepos] = useState(false)
   const [userRepositories, setUserRepositories] = useState<GitHubRepo[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
-
   // Animação de entrada
   useEffect(() => {
     setIsVisible(true)
   }, [])
-
   // Efeito de pulse no botão de sync quando há mudanças
   useEffect(() => {
     if (!isSyncing) {
@@ -58,10 +51,8 @@ const ProjectTab = ({
       return () => clearTimeout(timer)
     }
   }, [config.updated_at, isSyncing])
-
   const projectLogs = logs.filter(log => log.config_id === config.id)
   const lastSync = projectLogs.find(log => log.status === 'success')
-
   // Carregar repositórios do usuário do GitHub
   const loadUserRepositories = async () => {
     if (userRepositories.length > 0) return // Já carregados
@@ -76,7 +67,6 @@ const ProjectTab = ({
       setLoadingRepos(false)
     }
   }
-
   // Atualizar repositório
   const handleRepoUpdate = async (repoName: string, type: 'source' | 'target') => {
     try {
@@ -111,12 +101,10 @@ const ProjectTab = ({
       console.error(`Falha ao atualizar repositório ${type}: ${errorMessage}`)
     }
   }
-
   // Carregar repositórios do usuário na inicialização
   useEffect(() => {
     loadUserRepositories()
   }, [])
-
   // Abrir dropdown e carregar repos se necessário
   const handleDropdownToggle = (type: 'source' | 'target') => {
     if (type === 'source') {
@@ -132,7 +120,6 @@ const ProjectTab = ({
     }
   }
   const lastError = projectLogs.find(log => log.status === 'error')
-
   const getStatusColor = () => {
     if (!config.auto_sync) return 'text-gray-500'
     if (isSyncing) return 'text-blue-500'
@@ -142,7 +129,6 @@ const ProjectTab = ({
     if (lastSync) return 'text-green-500'
     return 'text-gray-500'
   }
-
   const getStatusIcon = () => {
     if (!config.auto_sync) return <PowerOff className="w-5 h-5" />
     if (isSyncing) return <Activity className="w-5 h-5 animate-spin" />
@@ -152,7 +138,6 @@ const ProjectTab = ({
     if (lastSync) return <CheckCircle className="w-5 h-5" />
     return <Clock className="w-5 h-5" />
   }
-
   const getStatusText = () => {
     if (!config.auto_sync) return 'Desabilitado'
     if (isSyncing) return 'Sincronizando...'
@@ -165,7 +150,6 @@ const ProjectTab = ({
     }
     return 'Nunca sincronizado'
   }
-
   return (
     <div className={`space-y-6 transition-all duration-500 ease-out transform ${
       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
@@ -175,7 +159,7 @@ const ProjectTab = ({
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <div className={`p-4 rounded-2xl transition-all duration-300 ${
-              config.enabled 
+              config.auto_sync 
                 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/25' 
                 : 'bg-gradient-to-br from-slate-500 to-slate-600 shadow-lg shadow-slate-500/25'
             }`}>
@@ -214,7 +198,6 @@ const ProjectTab = ({
             placeholder="Selecione um repositório"
             variant="card"
             showLabel={false}
-            cardTitle="Source Repository"
           />
           
           <div className="flex flex-col items-center space-y-2">
@@ -234,7 +217,6 @@ const ProjectTab = ({
             placeholder="Selecione um repositório"
             variant="card"
             showLabel={false}
-            cardTitle="Target Repository"
           />
         </div>
         
@@ -473,5 +455,4 @@ const ProjectTab = ({
     </div>
   )
 }
-
 export default ProjectTab

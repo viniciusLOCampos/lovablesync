@@ -231,6 +231,7 @@ class GitHubSyncService {
           currentStep: 'deleting',
           filesProcessed: 0,
           totalFiles: 0,
+          progress: 0,
           message: 'Deletando arquivos do repositório de destino...'
         })
       }
@@ -238,7 +239,7 @@ class GitHubSyncService {
       const deletedFiles = await this.deleteAllFiles(
         targetOwner, 
         targetRepo,
-        (_progress, message) => {
+        (progressValue, message) => {
           if (onProgress) {
             onProgress({
               configId: '',
@@ -247,6 +248,7 @@ class GitHubSyncService {
               currentStep: 'deleting',
               filesProcessed: 0,
               totalFiles: 0,
+              progress: progressValue,
               message
             })
           }
@@ -262,6 +264,7 @@ class GitHubSyncService {
           currentStep: 'copying',
           filesProcessed: 0,
           totalFiles: 0,
+          progress: 0,
           message: 'Copiando arquivos do repositório de origem...'
         })
       }
@@ -271,7 +274,7 @@ class GitHubSyncService {
         sourceRepo,
         targetOwner,
         targetRepo,
-        (_progress, message) => {
+        (progressValue, message) => {
           if (onProgress) {
             onProgress({
               configId: '',
@@ -280,6 +283,7 @@ class GitHubSyncService {
               currentStep: 'copying',
               filesProcessed: 0,
               totalFiles: 0,
+              progress: progressValue,
               message
             })
           }
@@ -297,6 +301,7 @@ class GitHubSyncService {
           currentStep: 'completed',
           filesProcessed: totalFilesProcessed,
           totalFiles: totalFilesProcessed,
+          progress: 100,
           message: `Sincronização concluída! ${copiedFiles} arquivos copiados.`
         })
       }
@@ -318,6 +323,7 @@ class GitHubSyncService {
           currentStep: 'error',
           filesProcessed: totalFilesProcessed,
           totalFiles: 0,
+          progress: 0,
           message: `Erro na sincronização: ${errorMessage}`
         })
       }

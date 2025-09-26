@@ -64,6 +64,7 @@ export interface SyncProgress {
   currentStep: 'deleting' | 'copying' | 'completed' | 'error'
   filesProcessed: number
   totalFiles: number
+  progress: number
   message: string
 }
 
@@ -101,7 +102,7 @@ export interface GitHubFile {
 // Tipos para componentes
 export interface SyncConfigFormData {
   name: string
-  sourcePath: string
+  sourceRepo: string
   targetRepo: string
   targetBranch: string
   autoSync: boolean
