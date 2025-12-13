@@ -61,7 +61,7 @@ export interface SyncProgress {
   configId: string
   configName: string
   status: SyncStatus
-  currentStep: 'deleting' | 'copying' | 'completed' | 'error'
+  currentStep: 'listing' | 'deleting' | 'copying' | 'completed' | 'error'
   filesProcessed: number
   totalFiles: number
   progress: number
@@ -122,7 +122,7 @@ export interface AppContextType {
   githubToken: string | null
   isLoading: boolean
   error: string | null
-  
+
   // Actions
   setGitHubToken: (token: string) => void
   addConfig: (config: CreateSyncConfig) => Promise<void>
