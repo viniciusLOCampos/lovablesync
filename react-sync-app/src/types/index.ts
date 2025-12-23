@@ -7,6 +7,7 @@ export interface SyncConfig {
   target_branch: string
   github_token: string | null
   auto_sync: boolean
+  use_gitignore: boolean
   sync_interval: number
   last_sync: string | null
   status: 'active' | 'inactive'
@@ -21,6 +22,7 @@ export interface CreateSyncConfig {
   target_branch?: string
   github_token?: string | null
   auto_sync?: boolean
+  use_gitignore?: boolean
   sync_interval?: number
 }
 
@@ -31,6 +33,7 @@ export interface UpdateSyncConfig {
   target_branch?: string
   github_token?: string | null
   auto_sync?: boolean
+  use_gitignore?: boolean
   sync_interval?: number
   status?: 'active' | 'inactive'
 }

@@ -213,7 +213,8 @@ function App() {
             ...prev.filter(p => p.configId !== config.id),
             { ...progress, configId: config.id, configName: config.name }
           ])
-        }
+        },
+        config.use_gitignore ?? true
       )
 
       // Log de resultado
@@ -279,6 +280,45 @@ function App() {
       setTimeout(() => {
         setSyncProgress(prev => prev.filter(p => p.configId !== config.id))
       }, 5000)
+    }
+  }
+
+  const handleCancelSync = async (configId: string) => {
+    try {
+      // Remover da lista de syncing
+      setSyncingConfigs(prev => prev.filter(id => id !== configId))
+
+      // Atualizar progresso para cancelado
+      setSyncProgress(prev => [
+        ...prev.filter(p => p.configId !== configId),
+        {
+          configId: configId,
+          configName: configs.find(c => c.id === configId)?.name || '',
+          status: 'error',
+          currentStep: 'error',
+          filesProcessed: 0,
+          totalFiles: 0,
+          progress: 0,
+          message: 'Sincronização cancelada pelo usuário'
+        }
+      ])
+
+      // Criar log de cancelamento
+      await supabaseService.createLog({
+        config_id: configId,
+        status: 'error',
+        message: 'Sincronização cancelada pelo usuário'
+      })
+
+      // Remover progresso após 3 segundos
+      setTimeout(() => {
+        setSyncProgress(prev => prev.filter(p => p.configId !== configId))
+      }, 3000)
+
+      // Recarregar logs
+      await loadLogs()
+    } catch (error) {
+      console.error('Erro ao cancelar sincronização:', error)
     }
   }
 
@@ -593,6 +633,7 @@ function App() {
                   logs={logs}
                   progress={getCurrentProgress()}
                   onSync={handleSync}
+                  onCancelSync={handleCancelSync}
                   onUpdateConfig={handleUpdateConfig}
                   isSyncing={syncingConfigs.includes(getCurrentConfig()!.id)}
                   onRefreshLogs={loadLogs}

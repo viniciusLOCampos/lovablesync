@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp, RefreshCw, Search } from 'lucide-react'
+import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp, RefreshCw, Search, X } from 'lucide-react'
 import type { SyncConfig, SyncLog, SyncProgress, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
@@ -11,6 +11,7 @@ interface ProjectTabProps {
   logs: SyncLog[]
   progress: SyncProgress | null
   onSync: (config: SyncConfig) => void
+  onCancelSync: (configId: string) => void
   isSyncing: boolean
   onRefreshLogs: () => void
   loading: boolean
@@ -22,6 +23,7 @@ const ProjectTab = ({
   logs,
   progress,
   onSync,
+  onCancelSync,
   isSyncing,
   onRefreshLogs,
   loading,
@@ -251,7 +253,7 @@ const ProjectTab = ({
         </div>
 
         {/* Sync Button */}
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex justify-center space-x-4">
           <button
             onClick={() => onSync(config)}
             disabled={!config.auto_sync || isSyncing}
@@ -295,6 +297,22 @@ const ProjectTab = ({
               </>
             )}
           </button>
+
+          {/* Botão de Cancelar - aparece apenas quando está sincronizando */}
+          {isSyncing && (
+            <button
+              onClick={() => onCancelSync(config.id)}
+              className="group relative flex items-center space-x-3 px-6 py-4 rounded-2xl font-bold text-lg transition-all duration-300 transform
+                bg-gradient-to-r from-red-600 to-rose-600 text-white 
+                hover:from-red-500 hover:to-rose-500 
+                shadow-2xl shadow-red-500/30 hover:shadow-red-500/50 
+                hover:scale-105 active:scale-95"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-white/10 via-transparent to-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <X className="w-6 h-6" />
+              <span className="relative z-10">Cancelar</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -419,6 +437,34 @@ const ProjectTab = ({
                       <dt className="text-slate-400">Última atualização:</dt>
                       <dd className="text-white">
                         {new Date(config.updated_at).toLocaleDateString()}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-white/10 mt-2">
+                      <dt className="text-slate-400 flex items-center">
+                        <span>Respeitar .gitignore:</span>
+                      </dt>
+                      <dd>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const updatedConfig = await supabaseService.updateConfig(config.id, {
+                                use_gitignore: !(config.use_gitignore ?? true)
+                              })
+                              onUpdateConfig(updatedConfig)
+                            } catch (error) {
+                              console.error('Erro ao atualizar configuração:', error)
+                            }
+                          }}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${(config.use_gitignore ?? true)
+                              ? 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                              : 'bg-slate-600'
+                            }`}
+                        >
+                          <span
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform duration-300 ${(config.use_gitignore ?? true) ? 'translate-x-6' : 'translate-x-1'
+                              }`}
+                          />
+                        </button>
                       </dd>
                     </div>
                   </dl>

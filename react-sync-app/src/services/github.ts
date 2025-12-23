@@ -342,7 +342,8 @@ class GitHubSyncService {
     sourceRepo: string,
     targetOwner: string,
     targetRepo: string,
-    onProgress?: (progress: SyncProgress) => void
+    onProgress?: (progress: SyncProgress) => void,
+    _useGitignore: boolean = true
   ): Promise<SyncResult> {
     const startTime = Date.now()
     const totalFilesProcessed = 0 // Estável
@@ -382,23 +383,29 @@ class GitHubSyncService {
         }
       }
 
-      // 2. Obter padrões do .gitignore do repositório source
-      if (onProgress) {
-        onProgress({
-          configId: '',
-          configName: '',
-          status: 'in_progress',
-          currentStep: 'listing',
-          filesProcessed: 0,
-          totalFiles: 0,
-          progress: 8,
-          message: 'Obtendo padrões do .gitignore...'
-        })
-      }
+      // 2. Obter padrões do .gitignore do repositório source (apenas se useGitignore estiver ativo)
+      let gitignorePatterns: string[] = []
 
-      const gitignorePatterns = await this.getGitignorePatterns(sourceOwner, sourceRepo)
-      if (gitignorePatterns.length > 0) {
-        console.log(`Encontrados ${gitignorePatterns.length} padrões no .gitignore`)
+      if (_useGitignore) {
+        if (onProgress) {
+          onProgress({
+            configId: '',
+            configName: '',
+            status: 'in_progress',
+            currentStep: 'listing',
+            filesProcessed: 0,
+            totalFiles: 0,
+            progress: 8,
+            message: 'Obtendo padrões do .gitignore...'
+          })
+        }
+
+        gitignorePatterns = await this.getGitignorePatterns(sourceOwner, sourceRepo)
+        if (gitignorePatterns.length > 0) {
+          console.log(`Encontrados ${gitignorePatterns.length} padrões no .gitignore`)
+        }
+      } else {
+        console.log('Gitignore desativado - todos os arquivos serão sincronizados')
       }
 
       // 3. Obter Trees
@@ -419,17 +426,19 @@ class GitHubSyncService {
         }
       }
 
-      // 4. Comparar e Preparar Blobs (filtrando arquivos do .gitignore)
+      // 4. Comparar e Preparar Blobs (filtrando arquivos do .gitignore se ativo)
       const allSourceFiles = sourceTree.tree.filter((item: any) => item.type === 'blob')
 
-      // Filtrar arquivos que devem ser ignorados baseado no .gitignore
-      const sourceFiles = allSourceFiles.filter((file: any) => {
-        const shouldIgnore = this.shouldIgnoreFile(file.path, gitignorePatterns)
-        if (shouldIgnore) {
-          console.log(`Ignorando arquivo (gitignore): ${file.path}`)
-        }
-        return !shouldIgnore
-      })
+      // Filtrar arquivos que devem ser ignorados baseado no .gitignore (somente se useGitignore estiver ativo)
+      const sourceFiles = _useGitignore
+        ? allSourceFiles.filter((file: any) => {
+          const shouldIgnore = this.shouldIgnoreFile(file.path, gitignorePatterns)
+          if (shouldIgnore) {
+            console.log(`Ignorando arquivo (gitignore): ${file.path}`)
+          }
+          return !shouldIgnore
+        })
+        : allSourceFiles
 
       console.log(`Arquivos após filtro do .gitignore: ${sourceFiles.length} de ${allSourceFiles.length}`)
 
