@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp, RefreshCw } from 'lucide-react'
+import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp, RefreshCw, Search } from 'lucide-react'
 import type { SyncConfig, SyncLog, SyncProgress, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
@@ -34,6 +34,7 @@ const ProjectTab = ({
   const [showTargetRepos, setShowTargetRepos] = useState(false)
   const [userRepositories, setUserRepositories] = useState<GitHubRepo[]>([])
   const [loadingRepos, setLoadingRepos] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Animação de entrada
   useEffect(() => {
@@ -179,22 +180,34 @@ const ProjectTab = ({
             </div>
           </div>
 
-          {/* Botão de Refresh para atualizar a lista de repositórios */}
-          <button
-            onClick={() => {
-              setUserRepositories([])
-              loadUserRepositories()
-            }}
-            disabled={loadingRepos}
-            className="group relative overflow-hidden px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40"
-            title="Atualizar lista de repositórios"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="relative flex items-center space-x-2">
-              <RefreshCw className={`w-5 h-5 ${loadingRepos ? 'animate-spin' : ''}`} />
-              <span className="font-semibold">Refresh</span>
+          {/* Campo de Busca e Botão de Refresh */}
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48 px-4 py-2 pl-10 bg-white/[0.05] border border-white/[0.15] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 transition-all duration-300 text-sm"
+                placeholder="Buscar repositório..."
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
-          </button>
+            <button
+              onClick={() => {
+                setUserRepositories([])
+                loadUserRepositories()
+              }}
+              disabled={loadingRepos}
+              className="group relative overflow-hidden px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40"
+              title="Atualizar lista de repositórios"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="relative flex items-center space-x-2">
+                <RefreshCw className={`w-4 h-4 ${loadingRepos ? 'animate-spin' : ''}`} />
+                <span className="font-semibold text-sm">Refresh</span>
+              </div>
+            </button>
+          </div>
         </div>
 
         {/* Repository Flow */}
@@ -202,7 +215,9 @@ const ProjectTab = ({
           <RepositoryDropdown
             label=""
             value={config.source_path}
-            repositories={userRepositories}
+            repositories={userRepositories.filter(repo =>
+              repo.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+            )}
             loading={loadingRepos}
             isOpen={showSourceRepos}
             onToggle={() => handleDropdownToggle('source')}
@@ -221,7 +236,9 @@ const ProjectTab = ({
           <RepositoryDropdown
             label=""
             value={config.target_repo}
-            repositories={userRepositories}
+            repositories={userRepositories.filter(repo =>
+              repo.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+            )}
             loading={loadingRepos}
             isOpen={showTargetRepos}
             onToggle={() => handleDropdownToggle('target')}
