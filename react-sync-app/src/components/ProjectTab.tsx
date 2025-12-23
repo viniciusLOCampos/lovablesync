@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
-import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp } from 'lucide-react'
+import { ArrowRight, Github, Activity, CheckCircle, AlertCircle, Clock, PowerOff, Zap, BarChart3, TrendingUp, RefreshCw } from 'lucide-react'
 import type { SyncConfig, SyncLog, SyncProgress, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
 import LogsViewer from './LogsViewer'
 import RepositoryDropdown from './RepositoryDropdown'
-import ProjectActionButtons from './ProjectActionButtons'
 
 interface ProjectTabProps {
   config: SyncConfig
@@ -186,14 +185,22 @@ const ProjectTab = ({
             </div>
           </div>
 
-          <ProjectActionButtons
-            config={config}
-            isSyncing={isSyncing}
-            onToggleEnabled={onToggleEnabled}
-            onEdit={onEdit}
-            onDelete={onDelete}
-            onSync={onSync}
-          />
+          {/* Botão de Refresh para atualizar a lista de repositórios */}
+          <button
+            onClick={() => {
+              setUserRepositories([])
+              loadUserRepositories()
+            }}
+            disabled={loadingRepos}
+            className="group relative overflow-hidden px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40"
+            title="Atualizar lista de repositórios"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <div className="relative flex items-center space-x-2">
+              <RefreshCw className={`w-5 h-5 ${loadingRepos ? 'animate-spin' : ''}`} />
+              <span className="font-semibold">Refresh</span>
+            </div>
+          </button>
         </div>
 
         {/* Repository Flow */}

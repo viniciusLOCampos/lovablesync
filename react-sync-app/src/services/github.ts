@@ -8,6 +8,88 @@ class GitHubSyncService {
   }
 
   /**
+   * Obtém o conteúdo do .gitignore do repositório
+   * Retorna array vazio se não existir
+   */
+  async getGitignorePatterns(owner: string, repo: string): Promise<string[]> {
+    try {
+      const { data } = await this.getOctokit().rest.repos.getContent({
+        owner,
+        repo,
+        path: '.gitignore'
+      })
+
+      if ('content' in data && data.content) {
+        const content = atob(data.content)
+        // Parse .gitignore e retorna os padrões válidos
+        return content
+          .split('\n')
+          .map(line => line.trim())
+          .filter(line => line && !line.startsWith('#'))
+      }
+      return []
+    } catch {
+      // .gitignore não existe
+      console.log('Arquivo .gitignore não encontrado no repositório source.')
+      return []
+    }
+  }
+
+  /**
+   * Verifica se um caminho de arquivo deve ser ignorado baseado nos padrões do .gitignore
+   */
+  shouldIgnoreFile(filePath: string, gitignorePatterns: string[]): boolean {
+    if (gitignorePatterns.length === 0) return false
+
+    for (const pattern of gitignorePatterns) {
+      // Padrão de diretório (termina com /)
+      if (pattern.endsWith('/')) {
+        const dirPattern = pattern.slice(0, -1)
+        if (filePath.startsWith(dirPattern + '/') || filePath === dirPattern) {
+          return true
+        }
+      }
+      // Padrão com wildcard **
+      else if (pattern.includes('**')) {
+        const regexPattern = pattern
+          .replace(/\./g, '\\.')
+          .replace(/\*\*/g, '.*')
+          .replace(/\*/g, '[^/]*')
+        if (new RegExp(`^${regexPattern}$`).test(filePath) ||
+          new RegExp(`^${regexPattern}`).test(filePath)) {
+          return true
+        }
+      }
+      // Padrão com wildcard simples *
+      else if (pattern.includes('*')) {
+        const regexPattern = pattern
+          .replace(/\./g, '\\.')
+          .replace(/\*/g, '[^/]*')
+        if (new RegExp(`^${regexPattern}$`).test(filePath) ||
+          new RegExp(`(^|/)${regexPattern}$`).test(filePath)) {
+          return true
+        }
+      }
+      // Padrão de diretório sem / final
+      else if (!pattern.includes('.') && !pattern.includes('*')) {
+        // Provavelmente é um diretório (ex: node_modules)
+        if (filePath.startsWith(pattern + '/') || filePath === pattern) {
+          return true
+        }
+      }
+      // Padrão exato ou em qualquer nível
+      else {
+        if (filePath === pattern ||
+          filePath.endsWith('/' + pattern) ||
+          filePath.startsWith(pattern + '/')) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
    * Obtém todos os arquivos de um repositório
    */
   async getRepositoryFiles(owner: string, repo: string, path: string = ''): Promise<GitHubFile[]> {
@@ -300,7 +382,26 @@ class GitHubSyncService {
         }
       }
 
-      // 2. Obter Trees
+      // 2. Obter padrões do .gitignore do repositório source
+      if (onProgress) {
+        onProgress({
+          configId: '',
+          configName: '',
+          status: 'in_progress',
+          currentStep: 'listing',
+          filesProcessed: 0,
+          totalFiles: 0,
+          progress: 8,
+          message: 'Obtendo padrões do .gitignore...'
+        })
+      }
+
+      const gitignorePatterns = await this.getGitignorePatterns(sourceOwner, sourceRepo)
+      if (gitignorePatterns.length > 0) {
+        console.log(`Encontrados ${gitignorePatterns.length} padrões no .gitignore`)
+      }
+
+      // 3. Obter Trees
       let sourceTree: any
       let targetTreeFiles: any[] = []
 
@@ -318,8 +419,20 @@ class GitHubSyncService {
         }
       }
 
-      // 3. Comparar e Preparar Blobs
-      const sourceFiles = sourceTree.tree.filter((item: any) => item.type === 'blob')
+      // 4. Comparar e Preparar Blobs (filtrando arquivos do .gitignore)
+      const allSourceFiles = sourceTree.tree.filter((item: any) => item.type === 'blob')
+
+      // Filtrar arquivos que devem ser ignorados baseado no .gitignore
+      const sourceFiles = allSourceFiles.filter((file: any) => {
+        const shouldIgnore = this.shouldIgnoreFile(file.path, gitignorePatterns)
+        if (shouldIgnore) {
+          console.log(`Ignorando arquivo (gitignore): ${file.path}`)
+        }
+        return !shouldIgnore
+      })
+
+      console.log(`Arquivos após filtro do .gitignore: ${sourceFiles.length} de ${allSourceFiles.length}`)
+
       const targetMap = new Map(targetTreeFiles.map((f: any) => [f.path, f.sha]))
 
       const blobsToCreate: any[] = []

@@ -14,12 +14,12 @@ function App() {
   const [githubToken, setGithubToken] = useState<string>('')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [userInfo, setUserInfo] = useState<{ username: string; email?: string } | null>(null)
-  
+
   // Estados dos dados
   const [configs, setConfigs] = useState<SyncConfig[]>([])
   const [logs, setLogs] = useState<SyncLog[]>([])
   const [syncProgress, setSyncProgress] = useState<SyncProgress[]>([])
-  
+
   // Estados de UI
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -70,16 +70,16 @@ function App() {
   const handleTokenSubmit = async (token: string) => {
     setLoading(true)
     setError(null)
-    
+
     try {
       const validation = await githubAuth.validateToken(token)
-      
+
       if (validation.valid) {
         githubAuth.setToken(token)
         setGithubToken(token)
         setIsAuthenticated(true)
         localStorage.setItem('github_token', token)
-        
+
         // Obter informações do usuário
         const user = await githubAuth.getUserInfo()
         setUserInfo(user)
@@ -128,7 +128,7 @@ function App() {
   const handleSaveConfig = async (configData: CreateSyncConfig | UpdateSyncConfig): Promise<void> => {
     try {
       let newConfigId: string
-      
+
       if (editingConfig) {
         // Atualizar configuração existente
         await supabaseService.updateConfig(editingConfig.id, configData as UpdateSyncConfig)
@@ -138,11 +138,11 @@ function App() {
         const newConfig = await supabaseService.createConfig(configData as CreateSyncConfig)
         newConfigId = newConfig.id
       }
-      
+
       await loadConfigs()
       setShowConfigForm(false)
       setEditingConfig(undefined)
-      
+
       // Mudar para a aba do projeto criado/editado
       setActiveTabId(newConfigId)
     } catch (error: unknown) {
@@ -155,7 +155,7 @@ function App() {
     try {
       await supabaseService.deleteConfig(config.id)
       await loadConfigs()
-      
+
       // Se a aba deletada estava ativa, mudar para outra aba
       if (activeTabId === config.id) {
         const remainingConfigs = configs.filter(c => c.id !== config.id)
@@ -178,16 +178,16 @@ function App() {
   }
 
   const handleUpdateConfig = (updatedConfig: SyncConfig) => {
-    setConfigs(prev => prev.map(config => 
+    setConfigs(prev => prev.map(config =>
       config.id === updatedConfig.id ? updatedConfig : config
     ))
   }
 
   const handleSync = async (config: SyncConfig) => {
     if (syncingConfigs.includes(config.id)) return
-    
+
     setSyncingConfigs(prev => [...prev, config.id])
-    
+
     // Adicionar progresso inicial
     const initialProgress: SyncProgress = {
       configId: config.id,
@@ -200,7 +200,7 @@ function App() {
       message: 'Iniciando sincronização...'
     }
     setSyncProgress(prev => [...prev.filter(p => p.configId !== config.id), initialProgress])
-    
+
     try {
       // Log de início
       await supabaseService.createLog({
@@ -208,11 +208,11 @@ function App() {
         status: 'in_progress',
         message: 'Sincronização iniciada'
       })
-      
+
       // Executar sincronização
       const [sourceOwner, sourceRepo] = config.source_path.split('/')
       const [targetOwner, targetRepo] = config.target_repo.split('/')
-      
+
       const result = await githubSync.syncRepositories(
         sourceOwner,
         sourceRepo,
@@ -225,17 +225,17 @@ function App() {
           ])
         }
       )
-      
+
       // Log de resultado
       await supabaseService.createLog({
         config_id: config.id,
         status: result.success ? 'success' : 'error',
-        message: result.success 
+        message: result.success
           ? `Sincronização concluída com sucesso. ${result.filesProcessed} arquivos processados em ${Math.round(result.duration / 1000)}s`
           : `Erro na sincronização: ${result.error}`,
         files_changed: result.filesProcessed
       })
-      
+
       // Atualizar progresso final
       setSyncProgress(prev => [
         ...prev.filter(p => p.configId !== config.id),
@@ -247,25 +247,25 @@ function App() {
           filesProcessed: result.filesProcessed,
           totalFiles: result.filesProcessed,
           progress: result.success ? 100 : 0,
-          message: result.success 
+          message: result.success
             ? `Sincronização concluída! ${result.filesProcessed} arquivos processados.`
             : `Erro: ${result.error}`
         }
       ])
-      
+
       // Recarregar logs
       await loadLogs()
-      
+
     } catch (error: unknown) {
       console.error('Erro na sincronização:', error)
-      
+
       // Log de erro
       await supabaseService.createLog({
         config_id: config.id,
         status: 'error',
         message: `Erro na sincronização: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
       })
-      
+
       // Atualizar progresso com erro
       setSyncProgress(prev => [
         ...prev.filter(p => p.configId !== config.id),
@@ -280,11 +280,11 @@ function App() {
           message: `Erro: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
         }
       ])
-      
+
       await loadLogs()
     } finally {
       setSyncingConfigs(prev => prev.filter(id => id !== config.id))
-      
+
       // Remover progresso após 5 segundos
       setTimeout(() => {
         setSyncProgress(prev => prev.filter(p => p.configId !== config.id))
@@ -301,7 +301,7 @@ function App() {
       target_branch: 'main',
       auto_sync: true
     }
-    
+
     // Definir como configuração de edição para pré-preencher o formulário
     setEditingConfig({
       id: 'temp-example',
@@ -336,20 +336,20 @@ function App() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.15),transparent_70%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.12),transparent_70%)]" />
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(16,185,129,0.08),transparent_70%)]" />
-          <div className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0deg,rgba(59,130,246,0.03)_60deg,transparent_120deg)] animate-spin" style={{animationDuration: '60s'}} />
+          <div className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0deg,rgba(59,130,246,0.03)_60deg,transparent_120deg)] animate-spin" style={{ animationDuration: '60s' }} />
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(255,255,255,0.01)_49%,rgba(255,255,255,0.01)_51%,transparent_52%)] bg-[length:40px_40px]" />
         </div>
-        
+
         {/* Floating Elements */}
         <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-20 right-20 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}} />
-        <div className="absolute top-1/2 left-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '4s'}} />
-        
+        <div className="absolute bottom-20 right-20 w-40 h-40 bg-purple-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-10 w-24 h-24 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+
         <div className="w-full max-w-xl bg-white/[0.03] backdrop-blur-3xl border border-white/[0.08] rounded-3xl shadow-2xl relative z-10 overflow-hidden">
           {/* Advanced Glassmorphism */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/[0.12] via-white/[0.03] to-transparent" />
           <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/[0.08] via-transparent to-purple-500/[0.05]" />
-          
+
           <div className="relative p-14">
             <div className="text-center mb-12">
               <div className="relative mb-10">
@@ -370,7 +370,7 @@ function App() {
                 Powered by advanced AI-driven sync technology
               </p>
             </div>
-          
+
             {error && (
               <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl backdrop-blur-sm animate-in slide-in-from-top duration-300">
                 <div className="flex items-center">
@@ -381,7 +381,7 @@ function App() {
                 </div>
               </div>
             )}
-          
+
             <form onSubmit={(e) => {
               e.preventDefault()
               const formData = new FormData(e.currentTarget)
@@ -405,6 +405,7 @@ function App() {
                     className="w-full px-8 py-5 bg-white/[0.04] border border-white/[0.12] rounded-2xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400/60 focus:border-blue-400/60 transition-all duration-500 backdrop-blur-xl group-hover:bg-white/[0.06] group-hover:border-white/[0.15] text-lg font-medium shadow-xl"
                     placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
                     required
+                    autoFocus
                   />
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/[0.03] via-purple-500/[0.02] to-indigo-500/[0.03] pointer-events-none" />
                   <div className="absolute inset-0 rounded-2xl shadow-inner" />
@@ -418,7 +419,7 @@ function App() {
                   </div>
                 </div>
               </div>
-            
+
               <button
                 type="submit"
                 disabled={loading || !githubToken.trim()}
@@ -456,7 +457,7 @@ function App() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(139,92,246,0.06),transparent_50%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_48%,rgba(255,255,255,0.005)_49%,rgba(255,255,255,0.005)_51%,transparent_52%)] bg-[length:60px_60px]" />
       </div>
-      
+
       {/* Sidebar */}
       <div className="fixed left-0 top-0 h-full w-80 bg-gray-950/98 backdrop-blur-2xl border-r border-white/[0.12] z-50 shadow-2xl">
         <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] via-white/[0.02] to-transparent" />
@@ -559,7 +560,7 @@ function App() {
                 </div>
               </div>
             )}
-            
+
             {/* Active tab content */}
             {activeTabId === 'new' ? (
               <div className="flex items-center justify-center py-24">
@@ -567,7 +568,7 @@ function App() {
                   <div className="p-12 bg-white/[0.04] rounded-3xl border border-white/[0.12] backdrop-blur-xl shadow-2xl relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent" />
                     <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/[0.05] via-transparent to-purple-500/[0.03]" />
-                    
+
                     <div className="relative">
                       <div className="w-28 h-28 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30 relative group">
                         <Github className="w-14 h-14 text-white group-hover:scale-110 transition-transform duration-500" />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Save, X, AlertCircle, Check, Github, Sparkles, Zap } from 'lucide-react'
+import { Save, X, AlertCircle, Check, Github, Sparkles, Zap, RefreshCw, Search } from 'lucide-react'
 import type { SyncConfig, CreateSyncConfig, UpdateSyncConfig, GitHubRepo } from '../types'
 import { githubAuth } from '../services/auth'
 import { supabaseService } from '../services/supabase'
@@ -25,6 +25,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
   const [loadingRepos, setLoadingRepos] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [validationStatus, setValidationStatus] = useState<Record<string, 'validating' | 'valid' | 'invalid'>>({})
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Carregar dados do formulário quando o config muda
   useEffect(() => {
@@ -83,7 +84,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
     try {
       const [owner, repo] = repoFullName.split('/')
       const result = await githubAuth.validateRepository(owner, repo)
-      
+
       if (result.valid) {
         setValidationStatus(prev => ({ ...prev, [field]: 'valid' }))
       } else {
@@ -139,7 +140,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     const isValid = await validateForm()
     if (!isValid) return
 
@@ -185,7 +186,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
         <div className="absolute inset-0 bg-gradient-to-br from-white/[0.12] via-white/[0.03] to-transparent rounded-3xl" />
         <div className="absolute inset-0 bg-gradient-to-tl from-blue-500/[0.15] via-transparent to-purple-500/[0.08] rounded-3xl" />
         <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-96 h-32 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 blur-3xl" />
-        
+
         <div className="relative">
           <div className="flex items-center justify-between p-10 border-b border-white/[0.15] bg-gradient-to-r from-gray-900/80 via-gray-800/60 to-gray-900/80 backdrop-blur-xl">
             <div className="flex items-center space-x-6">
@@ -242,11 +243,10 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className={`w-full px-8 py-6 border-2 rounded-3xl shadow-2xl focus:outline-none transition-all duration-500 text-white text-xl backdrop-blur-xl relative overflow-hidden ${
-                    errors.name 
-                      ? 'border-red-500/60 bg-red-500/15 focus:border-red-400 focus:ring-4 focus:ring-red-500/30 shadow-red-500/20' 
-                      : 'border-white/[0.15] bg-white/[0.05] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 hover:border-white/[0.25] shadow-blue-500/10'
-                  }`}
+                  className={`w-full px-8 py-6 border-2 rounded-3xl shadow-2xl focus:outline-none transition-all duration-500 text-white text-xl backdrop-blur-xl relative overflow-hidden ${errors.name
+                    ? 'border-red-500/60 bg-red-500/15 focus:border-red-400 focus:ring-4 focus:ring-red-500/30 shadow-red-500/20'
+                    : 'border-white/[0.15] bg-white/[0.05] focus:border-blue-500 focus:ring-4 focus:ring-blue-500/30 hover:border-white/[0.25] shadow-blue-500/10'
+                    }`}
                   placeholder="e.g., Sync Project A to B"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-white/[0.05] via-transparent to-white/[0.05] pointer-events-none rounded-3xl" />
@@ -266,78 +266,118 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
               )}
             </div>
 
-          <RepositoryDropdown
-            label="Source Repository"
-            value={formData.sourceRepo}
-            repositories={repositories}
-            loading={loadingRepos}
-            onSelect={(repoFullName) => {
-              setFormData(prev => ({ ...prev, sourceRepo: repoFullName }))
-              validateRepository(repoFullName, 'sourceRepo')
-            }}
-            colorScheme="blue"
-            placeholder="owner/repository"
-            error={errors.sourceRepo}
-            validationStatus={validationStatus.sourceRepo}
-            validationIcon={getValidationIcon('sourceRepo')}
-            allowManualInput
-            onManualInputChange={(value) => {
-              setFormData(prev => ({ ...prev, sourceRepo: value }))
-              if (value.includes('/')) {
-                validateRepository(value, 'sourceRepo')
-              }
-            }}
-          />
-
-          <RepositoryDropdown
-            label="Target Repository"
-            value={formData.targetRepo}
-            repositories={repositories}
-            loading={loadingRepos}
-            onSelect={(repoFullName) => {
-              setFormData(prev => ({ ...prev, targetRepo: repoFullName }))
-              validateRepository(repoFullName, 'targetRepo')
-            }}
-            colorScheme="emerald"
-            placeholder="owner/repository"
-            error={errors.targetRepo}
-            validationStatus={validationStatus.targetRepo}
-            validationIcon={getValidationIcon('targetRepo')}
-            allowManualInput
-            onManualInputChange={(value) => {
-              setFormData(prev => ({ ...prev, targetRepo: value }))
-              if (value.includes('/')) {
-                validateRepository(value, 'targetRepo')
-              }
-            }}
-          />
-
-          {/* Enable Configuration */}
-          <div className="group flex items-center p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border-2 border-white/[0.08] shadow-lg backdrop-blur-sm">
-            <div className="relative">
-              <input
-                type="checkbox"
-                id="autoSync"
-                checked={formData.autoSync}
-                onChange={(e) => setFormData(prev => ({ ...prev, autoSync: e.target.checked }))}
-                className="h-6 w-6 text-blue-600 focus:ring-blue-500 border-white/[0.12] bg-white/[0.05] rounded-lg transition-all duration-300 transform hover:scale-110"
-              />
-              {formData.autoSync && (
-                <div className="absolute inset-0 animate-ping h-6 w-6 bg-blue-400 rounded-lg opacity-30" />
-              )}
-            </div>
-            <label htmlFor="autoSync" className="ml-4 block text-lg font-bold text-white flex items-center">
-              <Zap className={`w-5 h-5 mr-3 transition-colors duration-300 ${
-                formData.autoSync ? 'text-green-400' : 'text-slate-400'
-              }`} />
-              Auto Sync Configuration
-              {formData.autoSync && (
-                <span className="ml-3 text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full font-medium animate-pulse border border-green-500/30">
-                  Active
+            {/* Search and Refresh Section */}
+            <div className="group">
+              <label className="block text-xl font-black text-white mb-6 flex items-center">
+                <div className="p-3 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl mr-4 shadow-lg shadow-cyan-500/30">
+                  <Search className="w-6 h-6 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-white via-cyan-100 to-white bg-clip-text text-transparent">
+                  Buscar Repositório
                 </span>
+              </label>
+              <div className="flex gap-4">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-8 py-5 pl-14 border-2 rounded-2xl shadow-xl focus:outline-none transition-all duration-500 text-white text-lg backdrop-blur-xl border-white/[0.15] bg-white/[0.05] focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/30 hover:border-white/[0.25]"
+                    placeholder="Buscar repositório... (ex: mktrack)"
+                  />
+                  <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                </div>
+                <button
+                  type="button"
+                  onClick={loadRepositories}
+                  disabled={loadingRepos}
+                  className="group relative overflow-hidden px-6 py-5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-500/25 hover:shadow-xl hover:shadow-emerald-500/40"
+                  title="Atualizar lista de repositórios"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-white/20 via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <RefreshCw className={`w-6 h-6 ${loadingRepos ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+              <p className="mt-3 text-sm text-slate-400">
+                Digite para filtrar os repositórios. Use o botão de refresh para atualizar a lista.
+              </p>
+            </div>
+
+            <RepositoryDropdown
+              label="Source Repository"
+              value={formData.sourceRepo}
+              repositories={repositories.filter(repo =>
+                repo.full_name.toLowerCase().includes(searchQuery.toLowerCase())
               )}
-            </label>
-          </div>
+              loading={loadingRepos}
+              onSelect={(repoFullName) => {
+                setFormData(prev => ({ ...prev, sourceRepo: repoFullName }))
+                validateRepository(repoFullName, 'sourceRepo')
+              }}
+              colorScheme="blue"
+              placeholder="owner/repository"
+              error={errors.sourceRepo}
+              validationStatus={validationStatus.sourceRepo}
+              validationIcon={getValidationIcon('sourceRepo')}
+              allowManualInput
+              onManualInputChange={(value) => {
+                setFormData(prev => ({ ...prev, sourceRepo: value }))
+                if (value.includes('/')) {
+                  validateRepository(value, 'sourceRepo')
+                }
+              }}
+            />
+
+            <RepositoryDropdown
+              label="Target Repository"
+              value={formData.targetRepo}
+              repositories={repositories.filter(repo =>
+                repo.full_name.toLowerCase().includes(searchQuery.toLowerCase())
+              )}
+              loading={loadingRepos}
+              onSelect={(repoFullName) => {
+                setFormData(prev => ({ ...prev, targetRepo: repoFullName }))
+                validateRepository(repoFullName, 'targetRepo')
+              }}
+              colorScheme="emerald"
+              placeholder="owner/repository"
+              error={errors.targetRepo}
+              validationStatus={validationStatus.targetRepo}
+              validationIcon={getValidationIcon('targetRepo')}
+              allowManualInput
+              onManualInputChange={(value) => {
+                setFormData(prev => ({ ...prev, targetRepo: value }))
+                if (value.includes('/')) {
+                  validateRepository(value, 'targetRepo')
+                }
+              }}
+            />
+
+            {/* Enable Configuration */}
+            <div className="group flex items-center p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-2xl border-2 border-white/[0.08] shadow-lg backdrop-blur-sm">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  id="autoSync"
+                  checked={formData.autoSync}
+                  onChange={(e) => setFormData(prev => ({ ...prev, autoSync: e.target.checked }))}
+                  className="h-6 w-6 text-blue-600 focus:ring-blue-500 border-white/[0.12] bg-white/[0.05] rounded-lg transition-all duration-300 transform hover:scale-110"
+                />
+                {formData.autoSync && (
+                  <div className="absolute inset-0 animate-ping h-6 w-6 bg-blue-400 rounded-lg opacity-30" />
+                )}
+              </div>
+              <label htmlFor="autoSync" className="ml-4 block text-lg font-bold text-white flex items-center">
+                <Zap className={`w-5 h-5 mr-3 transition-colors duration-300 ${formData.autoSync ? 'text-green-400' : 'text-slate-400'
+                  }`} />
+                Auto Sync Configuration
+                {formData.autoSync && (
+                  <span className="ml-3 text-xs bg-green-500/20 text-green-300 px-3 py-1 rounded-full font-medium animate-pulse border border-green-500/30">
+                    Active
+                  </span>
+                )}
+              </label>
+            </div>
 
             {/* Action Buttons */}
             <div className="flex justify-end space-x-8 pt-12 border-t-2 border-white/[0.15] bg-gradient-to-r from-gray-900/30 via-gray-800/20 to-gray-900/30 backdrop-blur-xl rounded-3xl p-8 mt-8">
@@ -363,7 +403,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
                 <div className="absolute inset-0 bg-gradient-to-r from-white/25 via-white/10 to-white/25 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 via-transparent to-purple-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                 <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-32 h-8 bg-gradient-to-r from-transparent via-white/30 to-transparent blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                
+
                 <span className="relative z-10 flex items-center">
                   {loading ? (
                     <>
@@ -382,7 +422,7 @@ export default function SyncConfigForm({ config, onSave, onCancel, isOpen }: Syn
                     </>
                   )}
                 </span>
-                
+
                 {!loading && (
                   <>
                     <div className="absolute -top-2 -right-2 w-6 h-6 bg-green-400 rounded-full animate-ping" />
