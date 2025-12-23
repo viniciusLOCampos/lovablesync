@@ -10,10 +10,7 @@ interface ProjectTabProps {
   config: SyncConfig
   logs: SyncLog[]
   progress: SyncProgress | null
-  onEdit: (config: SyncConfig) => void
-  onDelete: (config: SyncConfig) => void
   onSync: (config: SyncConfig) => void
-  onToggleEnabled: (config: SyncConfig) => void
   isSyncing: boolean
   onRefreshLogs: () => void
   loading: boolean
@@ -24,10 +21,7 @@ const ProjectTab = ({
   config,
   logs,
   progress,
-  onEdit,
-  onDelete,
   onSync,
-  onToggleEnabled,
   isSyncing,
   onRefreshLogs,
   loading,

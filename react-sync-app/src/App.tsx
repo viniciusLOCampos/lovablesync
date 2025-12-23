@@ -167,16 +167,6 @@ function App() {
     }
   }
 
-  const handleToggleEnabled = async (config: SyncConfig) => {
-    try {
-      await supabaseService.updateConfig(config.id, { auto_sync: !config.auto_sync })
-      await loadConfigs()
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      setError('Erro ao atualizar configuração: ' + errorMessage)
-    }
-  }
-
   const handleUpdateConfig = (updatedConfig: SyncConfig) => {
     setConfigs(prev => prev.map(config =>
       config.id === updatedConfig.id ? updatedConfig : config
@@ -602,13 +592,7 @@ function App() {
                   config={getCurrentConfig()!}
                   logs={logs}
                   progress={getCurrentProgress()}
-                  onEdit={(config) => {
-                    setEditingConfig(config)
-                    setShowConfigForm(true)
-                  }}
-                  onDelete={handleDeleteConfig}
                   onSync={handleSync}
-                  onToggleEnabled={handleToggleEnabled}
                   onUpdateConfig={handleUpdateConfig}
                   isSyncing={syncingConfigs.includes(getCurrentConfig()!.id)}
                   onRefreshLogs={loadLogs}
